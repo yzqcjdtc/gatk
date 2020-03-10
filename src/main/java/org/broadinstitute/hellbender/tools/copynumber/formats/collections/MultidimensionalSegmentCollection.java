@@ -17,15 +17,14 @@ import java.util.function.Function;
 public final class MultidimensionalSegmentCollection extends AbstractSampleLocatableCollection<MultidimensionalSegment> {
     //note to developers: repeat the column headers in Javadoc so that they are viewable when linked
     /**
-     * CONTIG, START, END, NUM_POINTS_COPY_RATIO, NUM_POINTS_ALLELE_FRACTION, MEAN_LOG2_COPY_RATIO
+     * CONTIG, START, END, NUM_POINTS_COPY_RATIO, NUM_POINTS_ALLELE_FRACTION
      */
     enum MultidimensionalSegmentTableColumn {
         CONTIG,
         START,
         END,
         NUM_POINTS_COPY_RATIO,
-        NUM_POINTS_ALLELE_FRACTION,
-        MEAN_LOG2_COPY_RATIO;
+        NUM_POINTS_ALLELE_FRACTION;
 
         static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
     }
@@ -36,9 +35,8 @@ public final class MultidimensionalSegmentCollection extends AbstractSampleLocat
         final int end = dataLine.getInt(MultidimensionalSegmentTableColumn.END);
         final int numPointsCopyRatio = dataLine.getInt(MultidimensionalSegmentTableColumn.NUM_POINTS_COPY_RATIO);
         final int numPointsAlleleFraction = dataLine.getInt(MultidimensionalSegmentTableColumn.NUM_POINTS_ALLELE_FRACTION);
-        final double meanLog2CopyRatio = dataLine.getDouble(MultidimensionalSegmentTableColumn.MEAN_LOG2_COPY_RATIO);
         final SimpleInterval interval = new SimpleInterval(contig, start, end);
-        return new MultidimensionalSegment(interval, numPointsCopyRatio, numPointsAlleleFraction, meanLog2CopyRatio);
+        return new MultidimensionalSegment(interval, numPointsCopyRatio, numPointsAlleleFraction);
     };
 
     private static final BiConsumer<MultidimensionalSegment, DataLine> MULTIDIMENSIONAL_SEGMENT_RECORD_AND_DATA_LINE_BI_CONSUMER = (alleleFractionSegment, dataLine) ->
@@ -46,8 +44,7 @@ public final class MultidimensionalSegmentCollection extends AbstractSampleLocat
                     .append(alleleFractionSegment.getStart())
                     .append(alleleFractionSegment.getEnd())
                     .append(alleleFractionSegment.getNumPointsCopyRatio())
-                    .append(alleleFractionSegment.getNumPointsAlleleFraction())
-                    .append(formatDouble(alleleFractionSegment.getMeanLog2CopyRatio()));
+                    .append(alleleFractionSegment.getNumPointsAlleleFraction());
 
     public MultidimensionalSegmentCollection(final File inputFile) {
         super(inputFile, MultidimensionalSegmentTableColumn.COLUMNS, MULTIDIMENSIONAL_SEGMENT_DATA_LINE_TO_RECORD_FUNCTION, MULTIDIMENSIONAL_SEGMENT_RECORD_AND_DATA_LINE_BI_CONSUMER);

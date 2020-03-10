@@ -5,14 +5,14 @@ import htsjdk.samtools.util.OverlapDetector;
 import org.apache.commons.math3.special.Beta;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
-import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.*;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.*;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.*;
@@ -227,34 +227,6 @@ public final class ModelSegments extends CommandLineProgram {
     public static final String COPY_RATIO_LEGACY_SEGMENTS_FILE_SUFFIX = ".cr.igv" + SEGMENTS_FILE_SUFFIX;
     public static final String ALLELE_FRACTION_LEGACY_SEGMENTS_FILE_SUFFIX = ".af.igv" + SEGMENTS_FILE_SUFFIX;
 
-    //het genotyping argument names
-    public static final String MINIMUM_TOTAL_ALLELE_COUNT_CASE_LONG_NAME = "minimum-total-allele-count-case";
-    public static final String MINIMUM_TOTAL_ALLELE_COUNT_NORMAL_LONG_NAME = "minimum-total-allele-count-normal";
-    public static final String GENOTYPING_HOMOZYGOUS_LOG_RATIO_THRESHOLD_LONG_NAME = "genotyping-homozygous-log-ratio-threshold";
-    public static final String GENOTYPING_BASE_ERROR_RATE_LONG_NAME = "genotyping-base-error-rate";
-
-    //segmentation argument names
-    public static final String MAXIMUM_NUMBER_OF_SEGMENTS_PER_CHROMOSOME_LONG_NAME = "maximum-number-of-segments-per-chromosome";
-    public static final String KERNEL_VARIANCE_COPY_RATIO_LONG_NAME = "kernel-variance-copy-ratio";
-    public static final String KERNEL_VARIANCE_ALLELE_FRACTION_LONG_NAME = "kernel-variance-allele-fraction";
-    public static final String KERNEL_SCALING_ALLELE_FRACTION_LONG_NAME = "kernel-scaling-allele-fraction";
-    public static final String KERNEL_APPROXIMATION_DIMENSION_LONG_NAME = "kernel-approximation-dimension";
-    public static final String WINDOW_SIZE_LONG_NAME = "window-size";
-    public static final String NUMBER_OF_CHANGEPOINTS_PENALTY_FACTOR_LONG_NAME = "number-of-changepoints-penalty-factor";
-
-    //MCMC argument names
-    public static final String MINOR_ALLELE_FRACTION_PRIOR_ALPHA_LONG_NAME = "minor-allele-fraction-prior-alpha";
-    public static final String NUMBER_OF_SAMPLES_COPY_RATIO_LONG_NAME = "number-of-samples-copy-ratio";
-    public static final String NUMBER_OF_BURN_IN_SAMPLES_COPY_RATIO_LONG_NAME = "number-of-burn-in-samples-copy-ratio";
-    public static final String NUMBER_OF_SAMPLES_ALLELE_FRACTION_LONG_NAME = "number-of-samples-allele-fraction";
-    public static final String NUMBER_OF_BURN_IN_SAMPLES_ALLELE_FRACTION_LONG_NAME = "number-of-burn-in-samples-allele-fraction";
-
-    //smoothing argument names
-    public static final String SMOOTHING_CREDIBLE_INTERVAL_THRESHOLD_COPY_RATIO_LONG_NAME = "smoothing-credible-interval-threshold-copy-ratio";
-    public static final String SMOOTHING_CREDIBLE_INTERVAL_THRESHOLD_ALLELE_FRACTION_LONG_NAME = "smoothing-credible-interval-threshold-allele-fraction";
-    public static final String MAXIMUM_NUMBER_OF_SMOOTHING_ITERATIONS_LONG_NAME = "maximum-number-of-smoothing-iterations";
-    public static final String NUMBER_OF_SMOOTHING_ITERATIONS_PER_FIT_LONG_NAME = "number-of-smoothing-iterations-per-fit";
-
     @Argument(
             doc = "Input file containing denoised copy ratios (output of DenoiseReadCounts).",
             fullName = CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME,
@@ -289,188 +261,34 @@ public final class ModelSegments extends CommandLineProgram {
     )
     private File outputDir;
 
-    @Argument(
-            doc = "Minimum total count for filtering allelic counts in the case sample, if available.  " +
-                    "The default value of zero is appropriate for matched-normal mode; " +
-                    "increase to an appropriate value for case-only mode.",
-            fullName = MINIMUM_TOTAL_ALLELE_COUNT_CASE_LONG_NAME,
-            minValue = 0,
-            optional = true
-    )
-    private int minTotalAlleleCountCase = 0;
+    @ArgumentCollection
+    private ModelSegmentsGenotypingArgumentCollection genotypingArguments = new ModelSegmentsGenotypingArgumentCollection();
+    private final int minTotalAlleleCountCase = genotypingArguments.minTotalAlleleCountCase;
+    private final int minTotalAlleleCountNormal = genotypingArguments.minTotalAlleleCountNormal;
+    private final double genotypingHomozygousLogRatioThreshold = genotypingArguments.genotypingHomozygousLogRatioThreshold;
+    private final double genotypingBaseErrorRate = genotypingArguments.genotypingBaseErrorRate;
 
-    @Argument(
-            doc = "Minimum total count for filtering allelic counts in the matched-normal sample, if available.",
-            fullName = MINIMUM_TOTAL_ALLELE_COUNT_NORMAL_LONG_NAME,
-            minValue = 0,
-            optional = true
-    )
-    private int minTotalAlleleCountNormal = 30;
+    @ArgumentCollection
+    private ModelSegmentsSegmentationArgumentCollection segmentationArguments = new ModelSegmentsSegmentationArgumentCollection();
+    private final int maxNumSegmentsPerChromosome = segmentationArguments.maxNumSegmentsPerChromosome;
+    private final double kernelVarianceCopyRatio = segmentationArguments.kernelVarianceCopyRatio;
+    private final double kernelVarianceAlleleFraction = segmentationArguments.kernelVarianceAlleleFraction;
+    private final double kernelScalingAlleleFraction = segmentationArguments.kernelScalingAlleleFraction;
+    private final int kernelApproximationDimension = segmentationArguments.kernelApproximationDimension;
+    private final List<Integer> windowSizes = segmentationArguments.windowSizes;
+    private final double numChangepointsPenaltyFactor = segmentationArguments.numChangepointsPenaltyFactor;
 
-    @Argument(
-            doc = "Log-ratio threshold for genotyping and filtering homozygous allelic counts, if available.  " +
-                    "Increasing this value will increase the number of sites assumed to be heterozygous for modeling.",
-            fullName = GENOTYPING_HOMOZYGOUS_LOG_RATIO_THRESHOLD_LONG_NAME,
-            optional = true
-    )
-    private double genotypingHomozygousLogRatioThreshold = -10.;
-
-    @Argument(
-            doc = "Maximum base-error rate for genotyping and filtering homozygous allelic counts, if available.  " +
-                    "The likelihood for an allelic count to be generated from a homozygous site will be integrated " +
-                    "from zero base-error rate up to this value.  Decreasing this value will increase " +
-                    "the number of sites assumed to be heterozygous for modeling.",
-            fullName = GENOTYPING_BASE_ERROR_RATE_LONG_NAME,
-            minValue = 0.,
-            maxValue = 1.,
-            optional = true
-    )
-    private double genotypingBaseErrorRate = 5E-2;
-
-    @Argument(
-            doc = "Maximum number of segments allowed per chromosome.",
-            fullName = MAXIMUM_NUMBER_OF_SEGMENTS_PER_CHROMOSOME_LONG_NAME,
-            minValue = 1,
-            optional = true
-    )
-    private int maxNumSegmentsPerChromosome = 1000;
-
-    @Argument(
-            doc = "Variance of Gaussian kernel for copy-ratio segmentation, if performed.  If zero, a linear kernel will be used.",
-            fullName = KERNEL_VARIANCE_COPY_RATIO_LONG_NAME,
-            minValue = 0.,
-            optional = true
-    )
-    private double kernelVarianceCopyRatio = 0.;
-
-    @Argument(
-            doc = "Variance of Gaussian kernel for allele-fraction segmentation, if performed.  If zero, a linear kernel will be used.",
-            fullName = KERNEL_VARIANCE_ALLELE_FRACTION_LONG_NAME,
-            minValue = 0.,
-            optional = true
-    )
-    private double kernelVarianceAlleleFraction = 0.025;
-
-    @Argument(
-            doc = "Relative scaling S of the kernel K_AF for allele-fraction segmentation to the kernel K_CR for copy-ratio segmentation.  " +
-                    "If multidimensional segmentation is performed, the total kernel used will be K_CR + S * K_AF.",
-            fullName = KERNEL_SCALING_ALLELE_FRACTION_LONG_NAME,
-            minValue = 0.,
-            optional = true
-    )
-    private double kernelScalingAlleleFraction = 1.0;
-
-    @Argument(
-            doc = "Dimension of the kernel approximation.  A subsample containing this number of data points " +
-                    "will be used to construct the approximation for each chromosome.  " +
-                    "If the total number of data points in a chromosome is greater " +
-                    "than this number, then all data points in the chromosome will be used.  " +
-                    "Time complexity scales quadratically and space complexity scales linearly with this parameter.",
-            fullName = KERNEL_APPROXIMATION_DIMENSION_LONG_NAME,
-            minValue = 1,
-            optional = true
-    )
-    private int kernelApproximationDimension = 100;
-
-    @Argument(
-            doc = "Window sizes to use for calculating local changepoint costs.  " +
-                    "For each window size, the cost for each data point to be a changepoint will be calculated " +
-                    "assuming that the point demarcates two adjacent segments of that size.  " +
-                    "Including small (large) window sizes will increase sensitivity to small (large) events.  " +
-                    "Duplicate values will be ignored.",
-            fullName = WINDOW_SIZE_LONG_NAME,
-            minValue = 1,
-            optional = true
-    )
-    private List<Integer> windowSizes = new ArrayList<>(Arrays.asList(8, 16, 32, 64, 128, 256));
-
-    @Argument(
-            doc = "Factor A for the penalty on the number of changepoints per chromosome for segmentation.  " +
-                    "Adds a penalty of the form A * C * [1 + log (N / C)], " +
-                    "where C is the number of changepoints in the chromosome, " +
-                    "to the cost function for each chromosome.  " +
-                    "Must be non-negative.",
-            fullName = NUMBER_OF_CHANGEPOINTS_PENALTY_FACTOR_LONG_NAME,
-            minValue = 0.,
-            optional = true
-    )
-    private double numChangepointsPenaltyFactor = 1.;
-
-    @Argument(
-            doc = "Alpha hyperparameter for the 4-parameter beta-distribution prior on segment minor-allele fraction. " +
-                    "The prior for the minor-allele fraction f in each segment is assumed to be Beta(alpha, 1, 0, 1/2). " +
-                    "Increasing this hyperparameter will reduce the effect of reference bias at the expense of sensitivity.",
-            fullName = MINOR_ALLELE_FRACTION_PRIOR_ALPHA_LONG_NAME,
-            optional = true,
-            minValue = 1
-    )
-    private double minorAlleleFractionPriorAlpha = 25.;
-
-    @Argument(
-            doc = "Total number of MCMC samples for copy-ratio model.",
-            fullName = NUMBER_OF_SAMPLES_COPY_RATIO_LONG_NAME,
-            optional = true,
-            minValue = 1
-    )
-    private int numSamplesCopyRatio = 100;
-
-    @Argument(
-            doc = "Number of burn-in samples to discard for copy-ratio model.",
-            fullName = NUMBER_OF_BURN_IN_SAMPLES_COPY_RATIO_LONG_NAME,
-            optional = true,
-            minValue = 0
-    )
-    private int numBurnInCopyRatio = 50;
-
-    @Argument(
-            doc = "Total number of MCMC samples for allele-fraction model.",
-            fullName = NUMBER_OF_SAMPLES_ALLELE_FRACTION_LONG_NAME,
-            optional = true,
-            minValue = 1
-    )
-    private int numSamplesAlleleFraction = 100;
-
-    @Argument(
-            doc = "Number of burn-in samples to discard for allele-fraction model.",
-            fullName = NUMBER_OF_BURN_IN_SAMPLES_ALLELE_FRACTION_LONG_NAME,
-            optional = true,
-            minValue = 0
-    )
-    private int numBurnInAlleleFraction = 50;
-
-    @Argument(
-            doc = "Number of 10% equal-tailed credible-interval widths to use for copy-ratio segmentation smoothing.",
-            fullName = SMOOTHING_CREDIBLE_INTERVAL_THRESHOLD_COPY_RATIO_LONG_NAME,
-            optional = true,
-            minValue = 0.
-    )
-    private double smoothingCredibleIntervalThresholdCopyRatio = 2.;
-
-    @Argument(
-            doc = "Number of 10% equal-tailed credible-interval widths to use for allele-fraction segmentation smoothing.",
-            fullName = SMOOTHING_CREDIBLE_INTERVAL_THRESHOLD_ALLELE_FRACTION_LONG_NAME,
-            optional = true,
-            minValue = 0.
-    )
-    private double smoothingCredibleIntervalThresholdAlleleFraction = 2.;
-
-    @Argument(
-            doc = "Maximum number of iterations allowed for segmentation smoothing.",
-            fullName = MAXIMUM_NUMBER_OF_SMOOTHING_ITERATIONS_LONG_NAME,
-            optional = true,
-            minValue = 0
-    )
-    private int maxNumSmoothingIterations = 25;
-
-    @Argument(
-            doc = "Number of segmentation-smoothing iterations per MCMC model refit. " +
-                    "(Increasing this will decrease runtime, but the final number of segments may be higher. " +
-                    "Setting this to 0 will completely disable model refitting between iterations.)",
-            fullName = NUMBER_OF_SMOOTHING_ITERATIONS_PER_FIT_LONG_NAME,
-            optional = true,
-            minValue = 0
-    )
-    private int numSmoothingIterationsPerFit = 0;
+    @ArgumentCollection
+    private ModelSegmentsModelingArgumentCollection modelingArguments = new ModelSegmentsModelingArgumentCollection();
+    private final double minorAlleleFractionPriorAlpha = modelingArguments.minorAlleleFractionPriorAlpha;
+    private final int numSamplesCopyRatio = modelingArguments.numSamplesCopyRatio;
+    private final int numBurnInCopyRatio = modelingArguments.numBurnInCopyRatio;
+    private final int numSamplesAlleleFraction = modelingArguments.numSamplesAlleleFraction;
+    private final int numBurnInAlleleFraction = modelingArguments.numBurnInAlleleFraction;
+    private final double smoothingCredibleIntervalThresholdCopyRatio = modelingArguments.smoothingCredibleIntervalThresholdCopyRatio;
+    private final double smoothingCredibleIntervalThresholdAlleleFraction = modelingArguments.smoothingCredibleIntervalThresholdAlleleFraction;
+    private final int maxNumSmoothingIterations = modelingArguments.maxNumSmoothingIterations;
+    private final int numSmoothingIterationsPerFit = modelingArguments.numSmoothingIterationsPerFit;
 
     @Override
     protected Object doWork() {
@@ -491,22 +309,21 @@ public final class ModelSegments extends CommandLineProgram {
         }
 
         //at this point, both denoisedCopyRatios and hetAllelicCounts are non-null, but may be empty;
-        //perform one-dimensional or multidimensional segmentation as appropriate and write to file
-        //(for use by CallCopyRatioSegments, if copy ratios are available)
+        //perform one-dimensional or multidimensional segmentation as appropriate
         final MultidimensionalSegmentCollection multidimensionalSegments;
         if (!denoisedCopyRatios.getRecords().isEmpty() && hetAllelicCounts.getRecords().isEmpty()) {
             final CopyRatioSegmentCollection copyRatioSegments = performCopyRatioSegmentation(denoisedCopyRatios);
             multidimensionalSegments = new MultidimensionalSegmentCollection(
                     copyRatioSegments.getMetadata(),
                     copyRatioSegments.getRecords().stream()
-                            .map(s -> new MultidimensionalSegment(s.getInterval(), s.getNumPoints(), 0, s.getMeanLog2CopyRatio()))
+                            .map(s -> new MultidimensionalSegment(s.getInterval(), s.getNumPoints(), 0))
                             .collect(Collectors.toList()));
         } else if (denoisedCopyRatios.getRecords().isEmpty() && !hetAllelicCounts.getRecords().isEmpty()) {
             final AlleleFractionSegmentCollection alleleFractionSegments = performAlleleFractionSegmentation(hetAllelicCounts);
             multidimensionalSegments = new MultidimensionalSegmentCollection(
                     alleleFractionSegments.getMetadata(),
                     alleleFractionSegments.getRecords().stream()
-                            .map(s -> new MultidimensionalSegment(s.getInterval(), 0, s.getNumPoints(), Double.NaN))
+                            .map(s -> new MultidimensionalSegment(s.getInterval(), 0, s.getNumPoints()))
                             .collect(Collectors.toList()));
         } else {
             multidimensionalSegments = new MultidimensionalKernelSegmenter(denoisedCopyRatios, hetAllelicCounts)
@@ -584,10 +401,7 @@ public final class ModelSegments extends CommandLineProgram {
         Utils.nonEmpty(outputPrefix);
         CopyNumberArgumentValidationUtils.validateAndPrepareOutputDirectories(outputDir);
 
-        Utils.validateArg(numSamplesCopyRatio > numBurnInCopyRatio,
-                "Number of copy-ratio samples must be greater than number of copy-ratio burn-in samples.");
-        Utils.validateArg(numSamplesAlleleFraction > numBurnInAlleleFraction,
-                "Number of allele-fraction samples must be greater than number of allele-fraction burn-in samples.");
+        modelingArguments.validateArguments();
     }
 
     private <T> T readOptionalFileOrNull(final File file,
