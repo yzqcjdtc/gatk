@@ -76,6 +76,8 @@ public final class MultisampleMultidimensionalKernelSegmenter {
     private final int numSamples;
     private final List<CopyRatioCollection> denoisedCopyRatiosList;
     private final List<AllelicCountCollection> allelicCountsList;
+    final CopyRatioCollection denoisedCopyRatiosFirstSample;
+    final AllelicCountCollection allelicCountsFirstSample;
     private final OverlapDetector<AllelicCount> allelicCountOverlapDetector;
     private final Comparator<Locatable> comparator;
     private final Map<String, List<MultidimensionalPoint>> multidimensionalPointsPerChromosome;
@@ -86,8 +88,8 @@ public final class MultisampleMultidimensionalKernelSegmenter {
         numSamples = denoisedCopyRatiosList.size();
         this.denoisedCopyRatiosList = denoisedCopyRatiosList;
         this.allelicCountsList = allelicCountsList;
-        final CopyRatioCollection denoisedCopyRatiosFirstSample = denoisedCopyRatiosList.get(0);
-        final AllelicCountCollection allelicCountsFirstSample = allelicCountsList.get(0);
+        denoisedCopyRatiosFirstSample = denoisedCopyRatiosList.get(0);
+        allelicCountsFirstSample = allelicCountsList.get(0);
         allelicCountOverlapDetector = allelicCountsFirstSample.getOverlapDetector();
         this.comparator = denoisedCopyRatiosFirstSample.getComparator();
         final Map<SimpleInterval, Integer> allelicSiteToIndexMap = IntStream.range(0, allelicCountsFirstSample.size()).boxed()
@@ -183,7 +185,7 @@ public final class MultisampleMultidimensionalKernelSegmenter {
         final int maxNumChangepointsPerChromosome = maxNumSegmentsPerChromosome - 1;
 
         logger.info(String.format("Finding changepoints in (%d, %d) data points and %d chromosomes across %d samples...",
-                denoisedCopyRatiosList.get(0).size(), allelicCountsList.get(0).size(), multidimensionalPointsPerChromosome.size(), numSamples));
+                denoisedCopyRatiosFirstSample.size(), allelicCountsFirstSample.size(), multidimensionalPointsPerChromosome.size(), numSamples));
 
         //loop over chromosomes, find changepoints, and create allele-fraction segments
         final List<SimpleInterval> segments = new ArrayList<>();
@@ -218,7 +220,7 @@ public final class MultisampleMultidimensionalKernelSegmenter {
             }
         }
         logger.info(String.format("Found %d segments in %d chromosomes across %d samples.", segments.size(), multidimensionalPointsPerChromosome.size(), numSamples));
-        return new SimpleIntervalCollection(denoisedCopyRatiosList.get(0).getMetadata(), segments);
+        return new SimpleIntervalCollection(denoisedCopyRatiosFirstSample.getMetadata(), segments);
     }
 
     private BiFunction<MultidimensionalPoint, MultidimensionalPoint, Double> constructKernel(final double kernelVarianceCopyRatio,

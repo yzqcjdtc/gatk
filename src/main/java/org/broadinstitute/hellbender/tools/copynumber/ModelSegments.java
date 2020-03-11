@@ -15,7 +15,6 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLoc
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatioSegment;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.LegacySegment;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.MultidimensionalSegment;
 import org.broadinstitute.hellbender.tools.copynumber.models.AlleleFractionModeller;
 import org.broadinstitute.hellbender.tools.copynumber.models.AlleleFractionPrior;
 import org.broadinstitute.hellbender.tools.copynumber.models.CopyRatioModeller;
@@ -333,23 +332,13 @@ public final class ModelSegments extends CommandLineProgram {
 
         //at this point, both denoisedCopyRatios and hetAllelicCounts are non-null, but may be empty;
         //perform one-dimensional or multidimensional segmentation as appropriate
-        final MultidimensionalSegmentCollection multidimensionalSegments;
+        final SimpleIntervalCollection segments;
         if (!denoisedCopyRatios.getRecords().isEmpty() && hetAllelicCounts.getRecords().isEmpty()) {
-            final CopyRatioSegmentCollection copyRatioSegments = performCopyRatioSegmentation(denoisedCopyRatios);
-            multidimensionalSegments = new MultidimensionalSegmentCollection(
-                    copyRatioSegments.getMetadata(),
-                    copyRatioSegments.getRecords().stream()
-                            .map(s -> new MultidimensionalSegment(s.getInterval(), s.getNumPoints(), 0))
-                            .collect(Collectors.toList()));
+            segments = performCopyRatioSegmentation(denoisedCopyRatios);
         } else if (denoisedCopyRatios.getRecords().isEmpty() && !hetAllelicCounts.getRecords().isEmpty()) {
-            final AlleleFractionSegmentCollection alleleFractionSegments = performAlleleFractionSegmentation(hetAllelicCounts);
-            multidimensionalSegments = new MultidimensionalSegmentCollection(
-                    alleleFractionSegments.getMetadata(),
-                    alleleFractionSegments.getRecords().stream()
-                            .map(s -> new MultidimensionalSegment(s.getInterval(), 0, s.getNumPoints()))
-                            .collect(Collectors.toList()));
+            segments = performAlleleFractionSegmentation(hetAllelicCounts);
         } else {
-            multidimensionalSegments = new MultidimensionalKernelSegmenter(denoisedCopyRatios, hetAllelicCounts)
+            segments = new MultidimensionalKernelSegmenter(denoisedCopyRatios, hetAllelicCounts)
                     .findSegmentation(maxNumSegmentsPerChromosome,
                             kernelVarianceCopyRatio, kernelVarianceAlleleFraction, kernelScalingAlleleFraction, kernelApproximationDimension,
                             ImmutableSet.copyOf(windowSizes).asList(),
@@ -360,7 +349,7 @@ public final class ModelSegments extends CommandLineProgram {
         //initial MCMC model fitting performed by MultidimensionalModeller constructor
         final AlleleFractionPrior alleleFractionPrior = new AlleleFractionPrior(minorAlleleFractionPriorAlpha);
         final MultidimensionalModeller modeller = new MultidimensionalModeller(
-                multidimensionalSegments, denoisedCopyRatios, hetAllelicCounts, alleleFractionPrior,
+                segments, denoisedCopyRatios, hetAllelicCounts, alleleFractionPrior,
                 numSamplesCopyRatio, numBurnInCopyRatio,
                 numSamplesAlleleFraction, numBurnInAlleleFraction);
 
@@ -436,7 +425,7 @@ public final class ModelSegments extends CommandLineProgram {
         return read.apply(file);
     }
 
-    private CopyRatioSegmentCollection performCopyRatioSegmentation(final CopyRatioCollection denoisedCopyRatios) {
+    private SimpleIntervalCollection performCopyRatioSegmentation(final CopyRatioCollection denoisedCopyRatios) {
         logger.info("Starting segmentation of denoised copy ratios...");
         return new CopyRatioKernelSegmenter(denoisedCopyRatios)
                 .findSegmentation(maxNumSegmentsPerChromosome, kernelVarianceCopyRatio, kernelApproximationDimension,
@@ -444,7 +433,7 @@ public final class ModelSegments extends CommandLineProgram {
                         numChangepointsPenaltyFactor, numChangepointsPenaltyFactor);
     }
 
-    private AlleleFractionSegmentCollection performAlleleFractionSegmentation(final AllelicCountCollection hetAllelicCounts) {
+    private SimpleIntervalCollection performAlleleFractionSegmentation(final AllelicCountCollection hetAllelicCounts) {
         logger.info("Starting segmentation of heterozygous allelic counts...");
         return new AlleleFractionKernelSegmenter(hetAllelicCounts)
                 .findSegmentation(maxNumSegmentsPerChromosome, kernelVarianceAlleleFraction, kernelApproximationDimension,

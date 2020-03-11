@@ -7,10 +7,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AllelicCountCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.MultidimensionalSegmentCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AllelicCount;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.MultidimensionalSegment;
 import org.broadinstitute.hellbender.tools.copynumber.utils.segmentation.KernelSegmenter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -73,7 +72,6 @@ public final class MultidimensionalKernelSegmenter {
     }
 
     private final CopyRatioCollection denoisedCopyRatios;
-    private final OverlapDetector<CopyRatio> copyRatioMidpointOverlapDetector;
     private final AllelicCountCollection allelicCounts;
     private final OverlapDetector<AllelicCount> allelicCountOverlapDetector;
     private final Comparator<Locatable> comparator;
@@ -86,7 +84,6 @@ public final class MultidimensionalKernelSegmenter {
         Utils.validateArg(denoisedCopyRatios.getMetadata().equals(allelicCounts.getMetadata()),
                 "Metadata do not match.");
         this.denoisedCopyRatios = denoisedCopyRatios;
-        copyRatioMidpointOverlapDetector = denoisedCopyRatios.getMidpointOverlapDetector();
         this.allelicCounts = allelicCounts;
         allelicCountOverlapDetector = allelicCounts.getOverlapDetector();
         final int numAllelicCountsToUse = (int) denoisedCopyRatios.getRecords().stream()
@@ -119,14 +116,14 @@ public final class MultidimensionalKernelSegmenter {
      *                                      to the kernel K_CR for copy-ratio data;
      *                                      the total kernel is K_CR + S * K_AF
      */
-    public MultidimensionalSegmentCollection findSegmentation(final int maxNumSegmentsPerChromosome,
-                                                              final double kernelVarianceCopyRatio,
-                                                              final double kernelVarianceAlleleFraction,
-                                                              final double kernelScalingAlleleFraction,
-                                                              final int kernelApproximationDimension,
-                                                              final List<Integer> windowSizes,
-                                                              final double numChangepointsPenaltyLinearFactor,
-                                                              final double numChangepointsPenaltyLogLinearFactor) {
+    public SimpleIntervalCollection findSegmentation(final int maxNumSegmentsPerChromosome,
+                                                     final double kernelVarianceCopyRatio,
+                                                     final double kernelVarianceAlleleFraction,
+                                                     final double kernelScalingAlleleFraction,
+                                                     final int kernelApproximationDimension,
+                                                     final List<Integer> windowSizes,
+                                                     final double numChangepointsPenaltyLinearFactor,
+                                                     final double numChangepointsPenaltyLogLinearFactor) {
         ParamUtils.isPositive(maxNumSegmentsPerChromosome, "Maximum number of segments must be positive.");
         ParamUtils.isPositiveOrZero(kernelVarianceCopyRatio, "Variance of copy-ratio Gaussian kernel must be non-negative (if zero, a linear kernel will be used).");
         ParamUtils.isPositiveOrZero(kernelVarianceAlleleFraction, "Variance of allele-fraction Gaussian kernel must be non-negative (if zero, a linear kernel will be used).");
@@ -148,7 +145,7 @@ public final class MultidimensionalKernelSegmenter {
                 denoisedCopyRatios.size(), allelicCounts.size(), multidimensionalPointsPerChromosome.size()));
 
         //loop over chromosomes, find changepoints, and create allele-fraction segments
-        final List<MultidimensionalSegment> segments = new ArrayList<>();
+        final List<SimpleInterval> segments = new ArrayList<>();
         for (final String chromosome : multidimensionalPointsPerChromosome.keySet()) {
             final List<MultidimensionalPoint> multidimensionalPointsInChromosome = multidimensionalPointsPerChromosome.get(chromosome);
             final int numMultidimensionalPointsInChromosome = multidimensionalPointsInChromosome.size();
@@ -160,11 +157,7 @@ public final class MultidimensionalKernelSegmenter {
                         chromosome, numMultidimensionalPointsInChromosome, MIN_NUM_POINTS_REQUIRED_PER_CHROMOSOME));
                 final int start = multidimensionalPointsInChromosome.get(0).getStart();
                 final int end = multidimensionalPointsInChromosome.get(numMultidimensionalPointsInChromosome - 1).getEnd();
-                segments.add(new MultidimensionalSegment(
-                        new SimpleInterval(chromosome, start, end),
-                        comparator,
-                        copyRatioMidpointOverlapDetector,
-                        allelicCountOverlapDetector));
+                segments.add(new SimpleInterval(chromosome, start, end));
                 continue;
             }
 
@@ -179,16 +172,12 @@ public final class MultidimensionalKernelSegmenter {
             for (final int changepoint : changepoints) {
                 final int start = multidimensionalPointsPerChromosome.get(chromosome).get(previousChangepoint + 1).getStart();
                 final int end = multidimensionalPointsPerChromosome.get(chromosome).get(changepoint).getEnd();
-                segments.add(new MultidimensionalSegment(
-                        new SimpleInterval(chromosome, start, end),
-                        comparator,
-                        copyRatioMidpointOverlapDetector,
-                        allelicCountOverlapDetector));
+                segments.add(new SimpleInterval(chromosome, start, end));
                 previousChangepoint = changepoint;
             }
         }
         logger.info(String.format("Found %d segments in %d chromosomes.", segments.size(), multidimensionalPointsPerChromosome.size()));
-        return new MultidimensionalSegmentCollection(allelicCounts.getMetadata(), segments);
+        return new SimpleIntervalCollection(denoisedCopyRatios.getMetadata(), segments);
     }
 
     private BiFunction<MultidimensionalPoint, MultidimensionalPoint, Double> constructKernel(final double kernelVarianceCopyRatio,

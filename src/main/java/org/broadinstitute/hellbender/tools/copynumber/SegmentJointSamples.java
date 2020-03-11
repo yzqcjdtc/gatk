@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
 import com.google.common.collect.ImmutableSet;
-import org.apache.commons.collections.ListUtils;
-import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -10,20 +8,22 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
-import org.broadinstitute.hellbender.tools.copynumber.arguments.*;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.SomaticGenotypingArgumentCollection;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.SomaticSegmentationArgumentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.*;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.*;
 import org.broadinstitute.hellbender.tools.copynumber.models.AlleleFractionModeller;
 import org.broadinstitute.hellbender.tools.copynumber.models.CopyRatioModeller;
-import org.broadinstitute.hellbender.tools.copynumber.segmentation.MultidimensionalKernelSegmenter;
 import org.broadinstitute.hellbender.tools.copynumber.segmentation.MultisampleMultidimensionalKernelSegmenter;
 import org.broadinstitute.hellbender.tools.copynumber.utils.genotyping.NaiveHeterozygousPileupGenotypingUtils;
 import org.broadinstitute.hellbender.tools.copynumber.utils.segmentation.KernelSegmenter;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -265,10 +265,10 @@ public final class SegmentJointSamples extends CommandLineProgram {
         //read input files (return null if not available) and validate metadata
         logHeapUsage("read input files");
         final List<CopyRatioCollection> denoisedCopyRatiosList = inputDenoisedCopyRatiosFiles.stream()
-                .map(CopyRatioCollection::new)
+                .map(f -> readOptionalFileOrNull(f, CopyRatioCollection::new))
                 .collect(Collectors.toList());
         final List<AllelicCountCollection> allelicCountsList = inputAllelicCountsFiles.stream()
-                .map(AllelicCountCollection::new)
+                .map(f -> readOptionalFileOrNull(f, AllelicCountCollection::new))
                 .collect(Collectors.toList());
         final AllelicCountCollection normalAllelicCounts = new AllelicCountCollection(inputNormalAllelicCountsFile);
 
@@ -335,5 +335,14 @@ public final class SegmentJointSamples extends CommandLineProgram {
         CopyNumberArgumentValidationUtils.validateInputs(
                 inputFiles.toArray(new File[maxNumInputFiles]));
         CopyNumberArgumentValidationUtils.validateOutputFiles(outputSegmentsFile);
+    }
+
+    private <T> T readOptionalFileOrNull(final File file,
+                                         final Function<File, T> read) {
+        if (file == null) {
+            return null;
+        }
+        logger.info(String.format("Reading file (%s)...", file));
+        return read.apply(file);
     }
 }

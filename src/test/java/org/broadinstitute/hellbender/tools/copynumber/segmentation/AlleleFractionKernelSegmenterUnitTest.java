@@ -3,11 +3,10 @@ package org.broadinstitute.hellbender.tools.copynumber.segmentation;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AlleleFractionSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AllelicCountCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.AlleleFractionSegment;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AllelicCount;
 import org.broadinstitute.hellbender.tools.copynumber.utils.segmentation.KernelSegmenterUnitTest;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -75,22 +74,22 @@ public final class AlleleFractionKernelSegmenterUnitTest extends GATKBaseTest {
                 .collect(Collectors.toList());
         final AllelicCountCollection allelicCounts = new AllelicCountCollection(metadata, allelicCountsList);
 
-        final AlleleFractionSegmentCollection segmentsExpected =
-                new AlleleFractionSegmentCollection(
+        final SimpleIntervalCollection segmentsExpected =
+                new SimpleIntervalCollection(
                         metadata,
                         Arrays.asList(
-                                new AlleleFractionSegment(new SimpleInterval("1", 1, 1000), allelicCountsList.subList(0, 1000)),
-                                new AlleleFractionSegment(new SimpleInterval("1", 1001, 2000), allelicCountsList.subList(1000, 2000)),
-                                new AlleleFractionSegment(new SimpleInterval("1", 2001, 2500), allelicCountsList.subList(2000, 2500)),
-                                new AlleleFractionSegment(new SimpleInterval("2", 1, 500), allelicCountsList.subList(2500, 3000)),
-                                new AlleleFractionSegment(new SimpleInterval("2", 501, 1500), allelicCountsList.subList(3000, 4000)),
-                                new AlleleFractionSegment(new SimpleInterval("2", 1501, 2500), allelicCountsList.subList(4000, 5000)),
-                                new AlleleFractionSegment(new SimpleInterval("3", 1, 1000), allelicCountsList.subList(5000, 6000)),
-                                new AlleleFractionSegment(new SimpleInterval("3", 1001, 2000), allelicCountsList.subList(6000, 7000)),
-                                new AlleleFractionSegment(new SimpleInterval("3", 2001, 2500), allelicCountsList.subList(7000, 7500)),
-                                new AlleleFractionSegment(new SimpleInterval("4", 1, 500), allelicCountsList.subList(7500, 8000)),
-                                new AlleleFractionSegment(new SimpleInterval("4", 501, 1500), allelicCountsList.subList(8000, 9000)),
-                                new AlleleFractionSegment(new SimpleInterval("4", 1501, 2500), allelicCountsList.subList(9000, 10000))));
+                                new SimpleInterval("1", 1, 1000),
+                                new SimpleInterval("1", 1001, 2000),
+                                new SimpleInterval("1", 2001, 2500),
+                                new SimpleInterval("2", 1, 500),
+                                new SimpleInterval("2", 501, 1500),
+                                new SimpleInterval("2", 1501, 2500),
+                                new SimpleInterval("3", 1, 1000),
+                                new SimpleInterval("3", 1001, 2000),
+                                new SimpleInterval("3", 2001, 2500),
+                                new SimpleInterval("4", 1, 500),
+                                new SimpleInterval("4", 501, 1500),
+                                new SimpleInterval("4", 1501, 2500)));
 
         return new Object[][]{
                 {allelicCounts, segmentsExpected}
@@ -99,7 +98,7 @@ public final class AlleleFractionKernelSegmenterUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "dataAlleleFractionKernelSegmenter")
     public void testAlleleFractionKernelSegmenter(final AllelicCountCollection allelicCounts,
-                                                  final AlleleFractionSegmentCollection segmentsExpected) {
+                                                  final SimpleIntervalCollection segmentsExpected) {
         final int maxNumChangepointsPerChromosome = 25;
         final double kernelVariance = 0.01;
         final int kernelApproximationDimension = 20;
@@ -107,7 +106,7 @@ public final class AlleleFractionKernelSegmenterUnitTest extends GATKBaseTest {
         final double numChangepointsPenaltyLinearFactor = 1.;
         final double numChangepointsPenaltyLogLinearFactor = 1.;
 
-        final AlleleFractionSegmentCollection segments = new AlleleFractionKernelSegmenter(allelicCounts)
+        final SimpleIntervalCollection segments = new AlleleFractionKernelSegmenter(allelicCounts)
                 .findSegmentation(maxNumChangepointsPerChromosome, kernelVariance, kernelApproximationDimension,
                         windowSizes, numChangepointsPenaltyLinearFactor, numChangepointsPenaltyLogLinearFactor);
         Assert.assertEquals(segments, segmentsExpected);

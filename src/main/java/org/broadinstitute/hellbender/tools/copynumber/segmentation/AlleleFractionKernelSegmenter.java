@@ -3,9 +3,8 @@ package org.broadinstitute.hellbender.tools.copynumber.segmentation;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AlleleFractionSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AllelicCountCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.AlleleFractionSegment;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AllelicCount;
 import org.broadinstitute.hellbender.tools.copynumber.utils.segmentation.KernelSegmenter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -50,12 +49,12 @@ public final class AlleleFractionKernelSegmenter {
      * Segments the internally held {@link AllelicCountCollection} using a separate {@link KernelSegmenter} for each chromosome.
      * @param kernelVariance    variance of the Gaussian kernel; if zero, a linear kernel is used instead
      */
-    public AlleleFractionSegmentCollection findSegmentation(final int maxNumSegmentsPerChromosome,
-                                                            final double kernelVariance,
-                                                            final int kernelApproximationDimension,
-                                                            final List<Integer> windowSizes,
-                                                            final double numChangepointsPenaltyLinearFactor,
-                                                            final double numChangepointsPenaltyLogLinearFactor) {
+    public SimpleIntervalCollection findSegmentation(final int maxNumSegmentsPerChromosome,
+                                                     final double kernelVariance,
+                                                     final int kernelApproximationDimension,
+                                                     final List<Integer> windowSizes,
+                                                     final double numChangepointsPenaltyLinearFactor,
+                                                     final double numChangepointsPenaltyLogLinearFactor) {
         ParamUtils.isPositive(maxNumSegmentsPerChromosome, "Maximum number of segments must be positive.");
         ParamUtils.isPositiveOrZero(kernelVariance, "Variance of Gaussian kernel must be non-negative (if zero, a linear kernel will be used).");
         ParamUtils.isPositive(kernelApproximationDimension, "Dimension of kernel approximation must be positive.");
@@ -72,7 +71,7 @@ public final class AlleleFractionKernelSegmenter {
                 allelicCounts.size(), allelicCountsPerChromosome.size()));
 
         //loop over chromosomes, find changepoints, and create allele-fraction segments
-        final List<AlleleFractionSegment> segments = new ArrayList<>();
+        final List<SimpleInterval> segments = new ArrayList<>();
         for (final String chromosome : allelicCountsPerChromosome.keySet()) {
             final List<AllelicCount> allelicCountsInChromosome = allelicCountsPerChromosome.get(chromosome);
             final int numAllelicCountsInChromosome = allelicCountsInChromosome.size();
@@ -84,8 +83,7 @@ public final class AlleleFractionKernelSegmenter {
                         chromosome, numAllelicCountsInChromosome, MIN_NUM_POINTS_REQUIRED_PER_CHROMOSOME));
                 final int start = allelicCountsInChromosome.get(0).getStart();
                 final int end = allelicCountsInChromosome.get(numAllelicCountsInChromosome - 1).getEnd();
-                segments.add(new AlleleFractionSegment(
-                        new SimpleInterval(chromosome, start, end), numAllelicCountsInChromosome));
+                segments.add(new SimpleInterval(chromosome, start, end));
                 continue;
             }
 
@@ -105,12 +103,11 @@ public final class AlleleFractionKernelSegmenter {
                 final int end = allelicCountsPerChromosome.get(chromosome).get(changepoint).getEnd();
                 final List<AllelicCount> allelicCountsInSegment = allelicCountsInChromosome.subList(
                         previousChangepoint + 1, changepoint + 1);
-                segments.add(new AlleleFractionSegment(
-                        new SimpleInterval(chromosome, start, end), allelicCountsInSegment));
+                segments.add(new SimpleInterval(chromosome, start, end));
                 previousChangepoint = changepoint;
             }
         }
         logger.info(String.format("Found %d segments in %d chromosomes.", segments.size(), allelicCountsPerChromosome.size()));
-        return new AlleleFractionSegmentCollection(allelicCounts.getMetadata(), segments);
+        return new SimpleIntervalCollection(allelicCounts.getMetadata(), segments);
     }
 }
