@@ -300,7 +300,7 @@ public final class ModelSegments extends CommandLineProgram {
 
         //genotype hets
         //hetAllelicCounts is set to an empty collection containing only metadata if no allelic counts are available;
-        //output allelic-count files containing hets for the case and the matched-normal are only written when available
+        //output allelic-counts files containing hets for the case and the matched-normal are only written when available
         final AllelicCountCollection hetAllelicCounts;
         if (allelicCounts == null) {
             hetAllelicCounts = new AllelicCountCollection(metadata, Collections.emptyList());

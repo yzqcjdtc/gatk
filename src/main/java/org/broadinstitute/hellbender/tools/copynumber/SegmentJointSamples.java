@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
 import com.google.common.collect.ImmutableSet;
+import org.apache.commons.collections.ListUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -15,12 +17,15 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.records.*;
 import org.broadinstitute.hellbender.tools.copynumber.models.AlleleFractionModeller;
 import org.broadinstitute.hellbender.tools.copynumber.models.CopyRatioModeller;
 import org.broadinstitute.hellbender.tools.copynumber.segmentation.MultidimensionalKernelSegmenter;
+import org.broadinstitute.hellbender.tools.copynumber.segmentation.MultisampleMultidimensionalKernelSegmenter;
+import org.broadinstitute.hellbender.tools.copynumber.utils.genotyping.NaiveHeterozygousPileupGenotypingUtils;
 import org.broadinstitute.hellbender.tools.copynumber.utils.segmentation.KernelSegmenter;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Models segmented copy ratios from denoised read counts and segmented minor-allele fractions from allelic counts.
@@ -207,19 +212,19 @@ import java.util.stream.Collectors;
 public final class SegmentJointSamples extends CommandLineProgram {
     @Argument(
             doc = "Input files containing denoised copy ratios (output of DenoiseReadCounts).  " +
-                    "Sample order must match that of input allelic-count files.",
+                    "Sample order must match that of input allelic-counts files.",
             fullName = CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME,
             minElements = 1
     )
-    private List<File> inputDenoisedCopyRatiosFile = null;
+    private List<File> inputDenoisedCopyRatiosFiles = null;
 
     @Argument(
             doc = "Input files containing allelic counts (output of CollectAllelicCounts).  " +
-                    "Sample order must match that of input copy-ratio files.",
+                    "Sample order must match that of input denoised-copy-ratios files.",
             fullName = CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME,
             minElements = 1
     )
-    private List<File> inputAllelicCountsFile = null;
+    private List<File> inputAllelicCountsFiles = null;
 
     @Argument(
             doc = "Input file containing allelic counts for a matched normal (output of CollectAllelicCounts).",
@@ -232,7 +237,7 @@ public final class SegmentJointSamples extends CommandLineProgram {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
-    private File outputMultidimensionalSegmentsFile;
+    private File outputSegmentsFile;
 
     @ArgumentCollection
     private SomaticGenotypingArgumentCollection genotypingArguments = new SomaticGenotypingArgumentCollection();
@@ -247,10 +252,10 @@ public final class SegmentJointSamples extends CommandLineProgram {
     private final List<Integer> windowSizes = segmentationArguments.windowSizes;
     private final double numChangepointsPenaltyFactor = segmentationArguments.numChangepointsPenaltyFactor;
 
-    private void logHeapUsage() {
+    private void logHeapUsage(final String phase) {
         final int mb = 1024 * 1024;
         final Runtime runtime = Runtime.getRuntime();
-        logger.info("Used memory: " + (runtime.totalMemory() - runtime.freeMemory()) / mb);
+        logger.info("Used memory after " + phase + ": " + (runtime.totalMemory() - runtime.freeMemory()) / mb);
     }
 
     @Override
@@ -258,51 +263,60 @@ public final class SegmentJointSamples extends CommandLineProgram {
         validateArguments();
 
         //read input files (return null if not available) and validate metadata
-        logHeapUsage();
-        CopyRatioCollection denoisedCopyRatios = readOptionalFileOrNull(inputDenoisedCopyRatiosFile, CopyRatioCollection::new);
-        logHeapUsage();
-        final AllelicCountCollection allelicCounts = readOptionalFileOrNull(inputAllelicCountsFile, AllelicCountCollection::new);
-        logHeapUsage();
-        final AllelicCountCollection normalAllelicCounts = readOptionalFileOrNull(inputNormalAllelicCountsFile, AllelicCountCollection::new);
-        logHeapUsage();
-        final SampleLocatableMetadata metadata = getValidatedMetadata(denoisedCopyRatios, allelicCounts);
+        logHeapUsage("read input files");
+        final List<CopyRatioCollection> denoisedCopyRatiosList = inputDenoisedCopyRatiosFiles.stream()
+                .map(CopyRatioCollection::new)
+                .collect(Collectors.toList());
+        final List<AllelicCountCollection> allelicCountsList = inputAllelicCountsFiles.stream()
+                .map(AllelicCountCollection::new)
+                .collect(Collectors.toList());
+        final AllelicCountCollection normalAllelicCounts = new AllelicCountCollection(inputNormalAllelicCountsFile);
+
+        //validate metadata
 
         //genotype hets (return empty collection containing only metadata if no allelic counts available)
-        final AllelicCountCollection hetAllelicCounts = genotypeHets(metadata, denoisedCopyRatios, allelicCounts, normalAllelicCounts);
+        final List<AllelicCountCollection> hetAllelicCountsList = IntStream.range(0, denoisedCopyRatiosList.size()).boxed()
+                .map(i -> NaiveHeterozygousPileupGenotypingUtils.genotypeHets(
+                        denoisedCopyRatiosList.get(i), allelicCountsList.get(i), normalAllelicCounts, genotypingArguments)
+                        .getHetAllelicCounts())
+                .collect(Collectors.toList());
+        logHeapUsage("genotype hets");
 
         //if denoised copy ratios are still null at this point, we assign an empty collection containing only metadata
-        if (denoisedCopyRatios == null) {
-            denoisedCopyRatios = new CopyRatioCollection(metadata, Collections.emptyList());
-        }
 
-        logHeapUsage();
         //at this point, both denoisedCopyRatios and hetAllelicCounts are non-null, but may be empty;
         //perform one-dimensional or multidimensional segmentation as appropriate
-        final MultidimensionalSegmentCollection multidimensionalSegments;
-        if (!denoisedCopyRatios.getRecords().isEmpty() && hetAllelicCounts.getRecords().isEmpty()) {
-            final CopyRatioSegmentCollection copyRatioSegments = performCopyRatioSegmentation(denoisedCopyRatios);
-            multidimensionalSegments = new MultidimensionalSegmentCollection(
-                    copyRatioSegments.getMetadata(),
-                    copyRatioSegments.getRecords().stream()
-                            .map(s -> new MultidimensionalSegment(s.getInterval(), s.getNumPoints(), 0))
-                            .collect(Collectors.toList()));
-        } else if (denoisedCopyRatios.getRecords().isEmpty() && !hetAllelicCounts.getRecords().isEmpty()) {
-            final AlleleFractionSegmentCollection alleleFractionSegments = performAlleleFractionSegmentation(hetAllelicCounts);
-            multidimensionalSegments = new MultidimensionalSegmentCollection(
-                    alleleFractionSegments.getMetadata(),
-                    alleleFractionSegments.getRecords().stream()
-                            .map(s -> new MultidimensionalSegment(s.getInterval(), 0, s.getNumPoints()))
-                            .collect(Collectors.toList()));
-        } else {
-            multidimensionalSegments = new MultidimensionalKernelSegmenter(denoisedCopyRatios, hetAllelicCounts)
-                    .findSegmentation(maxNumSegmentsPerChromosome,
-                            kernelVarianceCopyRatio, kernelVarianceAlleleFraction, kernelScalingAlleleFraction, kernelApproximationDimension,
-                            ImmutableSet.copyOf(windowSizes).asList(),
-                            numChangepointsPenaltyFactor, numChangepointsPenaltyFactor);
-        }
+//        final MultidimensionalSegmentCollection multidimensionalSegments;
+//        if (!denoisedCopyRatios.getRecords().isEmpty() && hetAllelicCounts.getRecords().isEmpty()) {
+//            final CopyRatioSegmentCollection copyRatioSegments = performCopyRatioSegmentation(denoisedCopyRatios);
+//            multidimensionalSegments = new MultidimensionalSegmentCollection(
+//                    copyRatioSegments.getMetadata(),
+//                    copyRatioSegments.getRecords().stream()
+//                            .map(s -> new MultidimensionalSegment(s.getInterval(), s.getNumPoints(), 0))
+//                            .collect(Collectors.toList()));
+//        } else if (denoisedCopyRatios.getRecords().isEmpty() && !hetAllelicCounts.getRecords().isEmpty()) {
+//            final AlleleFractionSegmentCollection alleleFractionSegments = performAlleleFractionSegmentation(hetAllelicCounts);
+//            multidimensionalSegments = new MultidimensionalSegmentCollection(
+//                    alleleFractionSegments.getMetadata(),
+//                    alleleFractionSegments.getRecords().stream()
+//                            .map(s -> new MultidimensionalSegment(s.getInterval(), 0, s.getNumPoints()))
+//                            .collect(Collectors.toList()));
+//        } else {
+//            multidimensionalSegments = new MultidimensionalKernelSegmenter(denoisedCopyRatios, hetAllelicCounts)
+//                    .findSegmentation(maxNumSegmentsPerChromosome,
+//                            kernelVarianceCopyRatio, kernelVarianceAlleleFraction, kernelScalingAlleleFraction, kernelApproximationDimension,
+//                            ImmutableSet.copyOf(windowSizes).asList(),
+//                            numChangepointsPenaltyFactor, numChangepointsPenaltyFactor);
+//        }
+        final SimpleIntervalCollection segments = new MultisampleMultidimensionalKernelSegmenter(denoisedCopyRatiosList, hetAllelicCountsList)
+                .findSegmentation(maxNumSegmentsPerChromosome,
+                        kernelVarianceCopyRatio, kernelVarianceAlleleFraction, kernelScalingAlleleFraction, kernelApproximationDimension,
+                        ImmutableSet.copyOf(windowSizes).asList(),
+                        numChangepointsPenaltyFactor, numChangepointsPenaltyFactor);
+        logHeapUsage("multidimensional segmentation");
 
         //write segments to file
-        multidimensionalSegments.write(outputMultidimensionalSegmentsFile);
+        segments.write(outputSegmentsFile);
 
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
 
@@ -310,15 +324,16 @@ public final class SegmentJointSamples extends CommandLineProgram {
     }
 
     private void validateArguments() {
-        Utils.validateArg(!(inputDenoisedCopyRatiosFile == null && inputAllelicCountsFile == null),
-                "Must provide at least a denoised-copy-ratios file or an allelic-counts file.");
-        Utils.validateArg(!(inputAllelicCountsFile == null && inputNormalAllelicCountsFile != null),
-                "Must provide an allelic-counts file for the case sample to run in matched-normal mode.");
+        Utils.validateArg(inputDenoisedCopyRatiosFiles.size() == inputAllelicCountsFiles.size(),
+                "Number of denoised-copy-ratios files and allelic-counts files must be equal.");
 
+        final int maxNumInputFiles = 2 * inputDenoisedCopyRatiosFiles.size() + 1;
+        final List<File> inputFiles = new ArrayList<>(maxNumInputFiles);
+        inputFiles.addAll(inputDenoisedCopyRatiosFiles);
+        inputFiles.addAll(inputAllelicCountsFiles);
+        inputFiles.add(inputNormalAllelicCountsFile);
         CopyNumberArgumentValidationUtils.validateInputs(
-                inputDenoisedCopyRatiosFile,
-                inputAllelicCountsFile,
-                inputNormalAllelicCountsFile);
-        CopyNumberArgumentValidationUtils.validateOutputFiles(outputMultidimensionalSegmentsFile);
+                inputFiles.toArray(new File[maxNumInputFiles]));
+        CopyNumberArgumentValidationUtils.validateOutputFiles(outputSegmentsFile);
     }
 }

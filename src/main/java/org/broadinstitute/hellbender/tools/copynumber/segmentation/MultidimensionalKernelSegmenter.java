@@ -187,7 +187,7 @@ public final class MultidimensionalKernelSegmenter {
                 previousChangepoint = changepoint;
             }
         }
-        logger.info(String.format("Found %d segments in %d chromosomes.", segments.size(), multidimensionalPointsPerChromosome.keySet().size()));
+        logger.info(String.format("Found %d segments in %d chromosomes.", segments.size(), multidimensionalPointsPerChromosome.size()));
         return new MultidimensionalSegmentCollection(allelicCounts.getMetadata(), segments);
     }
 

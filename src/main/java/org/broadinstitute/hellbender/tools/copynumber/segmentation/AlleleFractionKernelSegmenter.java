@@ -110,7 +110,7 @@ public final class AlleleFractionKernelSegmenter {
                 previousChangepoint = changepoint;
             }
         }
-        logger.info(String.format("Found %d segments in %d chromosomes.", segments.size(), allelicCountsPerChromosome.keySet().size()));
+        logger.info(String.format("Found %d segments in %d chromosomes.", segments.size(), allelicCountsPerChromosome.size()));
         return new AlleleFractionSegmentCollection(allelicCounts.getMetadata(), segments);
     }
 }

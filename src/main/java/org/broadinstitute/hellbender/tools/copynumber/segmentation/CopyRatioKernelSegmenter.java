@@ -114,7 +114,7 @@ public final class CopyRatioKernelSegmenter {
                 previousChangepoint = changepoint;
             }
         }
-        logger.info(String.format("Found %d segments in %d chromosomes.", segments.size(), denoisedCopyRatiosPerChromosome.keySet().size()));
+        logger.info(String.format("Found %d segments in %d chromosomes.", segments.size(), denoisedCopyRatiosPerChromosome.size()));
         return new CopyRatioSegmentCollection(denoisedCopyRatios.getMetadata(), segments);
     }
 }

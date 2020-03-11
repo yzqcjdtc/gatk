@@ -11,7 +11,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 /**
- * Represents a collection of {@link SimpleInterval} associated to a sample.
+ * Represents a collection of {@link SimpleInterval}.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
