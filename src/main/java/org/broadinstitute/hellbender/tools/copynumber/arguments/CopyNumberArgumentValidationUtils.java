@@ -119,6 +119,8 @@ public final class CopyNumberArgumentValidationUtils {
     /**
      * For all non-null inputs, validate that all metadata are identical and return the metadata.
      */
+    @SafeVarargs
+    @SuppressWarnings({"varargs"})
     public static <METADATA extends Metadata> METADATA getValidatedMetadata(final AbstractRecordCollection<METADATA, ?> ... recordCollections) {
         Utils.nonNull(recordCollections);
         final Set<METADATA> metadataSet = Stream.of(recordCollections)
