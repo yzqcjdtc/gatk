@@ -8,11 +8,9 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumen
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.DetermineGermlineContigPloidy;
 import org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AbstractLocatableCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.*;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.LocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.Metadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotatedInterval;
 import org.broadinstitute.hellbender.utils.*;
@@ -22,10 +20,7 @@ import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.OptionalInt;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -119,6 +114,20 @@ public final class CopyNumberArgumentValidationUtils {
                 : readCounts.getIntervals();
 
         return new SimpleIntervalCollection(metadata, intervals);
+    }
+
+    /**
+     * For all non-null inputs, validate that all metadata are identical and return the metadata.
+     */
+    public static <METADATA extends Metadata> METADATA getValidatedMetadata(final AbstractRecordCollection<METADATA, ?> ... recordCollections) {
+        Utils.nonNull(recordCollections);
+        final Set<METADATA> metadataSet = Stream.of(recordCollections)
+                .filter(Objects::nonNull)
+                .map(AbstractRecordCollection::getMetadata)
+                .collect(Collectors.toSet());
+        Utils.nonEmpty(metadataSet, "At least one collection must be non-null.");
+        Utils.validateArg(metadataSet.size() == 1, "Metadata do not match.");
+        return metadataSet.stream().findFirst().get();
     }
 
     /**
