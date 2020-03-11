@@ -27,8 +27,8 @@ public final class NaiveHeterozygousPileupGenotypingUtils {
         private final AllelicCountCollection hetNormalAllelicCounts;
 
 
-        public NaiveHeterozygousPileupGenotypingResult(final AllelicCountCollection hetAllelicCounts,
-                                                       final AllelicCountCollection hetNormalAllelicCounts) {
+        NaiveHeterozygousPileupGenotypingResult(final AllelicCountCollection hetAllelicCounts,
+                                                final AllelicCountCollection hetNormalAllelicCounts) {
             this.hetAllelicCounts = Utils.nonNull(hetAllelicCounts);
             this.hetNormalAllelicCounts = hetNormalAllelicCounts;
         }
