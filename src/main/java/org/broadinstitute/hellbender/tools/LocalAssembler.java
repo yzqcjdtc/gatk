@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools;
 
+import htsjdk.samtools.SAMUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -7,6 +8,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFastqUtils;
 import org.broadinstitute.hellbender.tools.walkers.PairWalker;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.collections.HopscotchSet;
@@ -32,9 +34,10 @@ public class LocalAssembler extends PairWalker {
     public static final byte QMIN = 25;
     public static final int MIN_THIN_OBS = 4;
     public static final int MIN_GAPFILL_COUNT = 3;
-
+/*
     @Argument(fullName = "ref-index", doc = "The MiniMap2 index for the reference")
     private String refIndex;
+*/
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="Write output to this file")
@@ -84,22 +87,13 @@ public class LocalAssembler extends PairWalker {
 
         final Map<Contig,List<TransitPairCount>> contigTransitsMap = collectTransitPairCounts(contigs, readPaths);
         final List<Traversal> allTraversals = traverseAllPaths(contigs, contigTransitsMap, readPaths);
+        writeTraversals(allTraversals, output + ".traversals.fa");
 
-        final List<List<MiniMap2Alignment>> alignments;
-        final List<String> refNames;
-        try ( final MiniMap2Index mm2Index = new MiniMap2Index(refIndex) ) {
-            refNames = mm2Index.getRefNames();
-            final MiniMap2Aligner aligner = new MiniMap2Aligner(mm2Index, MiniMap2Aligner.Preset.ASM20);
-            alignments = aligner.alignSeqs(allTraversals, trv -> trv.getSequence().getBytes());
-        }
-
-//        contigs.sort(Comparator.comparingInt(ContigImpl::getId));
-//        writeDOT(contigs, "assembly.dot");
-//        writeContigs(contigs);
-//        writePaths(readPaths);
-        writeAlignments(allTraversals, alignments, refNames, output);
-//        writeTraversals(allTraversals, "assembly.fa");
-//        System.out.println("There are " + nComponents + " assembly graph components.");
+        contigs.sort(Comparator.comparingInt(ContigImpl::getId));
+        writeDOT(contigs, output + ".assembly.dot");
+        writeContigs(contigs, output + ".contigs.txt");
+        writePaths(readPaths, output + ".paths.txt");
+        writeReads(reads, output + ".reads.fastq");
         return null;
     }
 
@@ -753,7 +747,7 @@ public class LocalAssembler extends PairWalker {
         }
         return true;
     }
-/*
+
     private static void writeDOT( final List<ContigImpl> contigs,
                                   final String fileName ) {
         try ( final BufferedWriter writer = new BufferedWriter(new FileWriter(fileName)) ) {
@@ -779,56 +773,85 @@ public class LocalAssembler extends PairWalker {
         }
     }
 
-    private static void writeContigs( final List<ContigImpl> contigs ) {
-        for ( final Contig contig : contigs ) {
-            final List<Contig> predecessors = contig.getPredecessors();
-            final String predecessorDescription;
-            if ( predecessors.size() == 0 ) {
-                predecessorDescription = "\tnone";
-            } else {
-                final StringBuilder sb = new StringBuilder();
-                char prefix = '\t';
-                for ( final Contig predecessor : predecessors ) {
-                    sb.append(prefix);
-                    prefix = ',';
-                    sb.append(predecessor);
+    private static void writeContigs( final List<ContigImpl> contigs, final String fileName ) {
+        try ( final BufferedWriter writer = new BufferedWriter(new FileWriter(fileName)) ) {
+            for ( final Contig contig : contigs ) {
+                final List<Contig> predecessors = contig.getPredecessors();
+                final String predecessorDescription;
+                if ( predecessors.size() == 0 ) {
+                    predecessorDescription = "\tnone";
+                } else {
+                    final StringBuilder sb = new StringBuilder();
+                    char prefix = '\t';
+                    for ( final Contig predecessor : predecessors ) {
+                        sb.append(prefix);
+                        prefix = ',';
+                        sb.append(predecessor);
+                    }
+                    predecessorDescription = sb.toString();
                 }
-                predecessorDescription = sb.toString();
-            }
 
-            final List<Contig> successors = contig.getSuccessors();
-            final String successorDescription;
-            if ( successors.size() == 0 ) {
-                successorDescription = "\tnone";
-            } else {
-                final StringBuilder sb = new StringBuilder();
-                char prefix = '\t';
-                for ( final Contig successor : successors ) {
-                    sb.append(prefix);
-                    prefix = ',';
-                    sb.append(successor);
+                final List<Contig> successors = contig.getSuccessors();
+                final String successorDescription;
+                if ( successors.size() == 0 ) {
+                    successorDescription = "\tnone";
+                } else {
+                    final StringBuilder sb = new StringBuilder();
+                    char prefix = '\t';
+                    for ( final Contig successor : successors ) {
+                        sb.append(prefix);
+                        prefix = ',';
+                        sb.append(successor);
+                    }
+                    successorDescription = sb.toString();
                 }
-                successorDescription = sb.toString();
-            }
 
-            final String contigName = contig.toString();
-            final String component = (contig.isCyclic() ? "(C)\t" : "\t") + contig.getComponentId();
-            System.out.println(
-                    contigName + component + predecessorDescription + successorDescription + "\t" +
+                final String contigName = contig.toString();
+                final String component = (contig.isCyclic() ? "(C)\t" : "\t") + contig.getComponentId();
+                writer.write(
+                       contigName + component + predecessorDescription + successorDescription + "\t" +
                             contig.getMaxObservations() + "\t" +
                             contig.getFirstKmer().getNObservations() + "\t" +
                             contig.getLastKmer().getNObservations() + "\t" +
                             contig.size() + "\t" +
-                            contig.getSequence());
+                            contig.getSequence() + "\n");
+            }
+        } catch ( final IOException ioe ) {
+            throw new GATKException("Failed to write contigs file.", ioe);
         }
     }
 
-    private static void writePaths( final List<Path> readPaths ) {
-        final int nReads = readPaths.size();
-        for ( int readId = 0; readId != nReads; ++readId ) {
-            final Path path = readPaths.get(readId);
-            final String pathDesc = path.toString();
-            System.out.println((readId + 1) + ": " + pathDesc);
+    private static void writePaths( final List<Path> readPaths, final String fileName ) {
+        try ( final BufferedWriter writer = new BufferedWriter(new FileWriter(fileName)) ) {
+            final int nReads = readPaths.size();
+            for ( int readId = 0; readId != nReads; ++readId ) {
+                final Path path = readPaths.get(readId);
+                final String pathDesc = path.toString();
+                writer.write((readId + 1) + ": " + pathDesc + "\n");
+            }
+        } catch ( final IOException ioe ) {
+            throw new GATKException("Failed to write paths file.", ioe);
+        }
+    }
+
+    private static void writeReads( final List<GATKRead> reads, final String fileName ) {
+        try ( final BufferedWriter writer = new BufferedWriter(new FileWriter(fileName)) ) {
+            for ( final GATKRead read : reads ) {
+                writer.write("@" + read.getName());
+                writer.write('\n');
+                writer.write(new String(read.getBasesNoCopy()));
+                writer.write("\n+\n");
+                final byte[] quals = read.getBaseQualitiesNoCopy();
+                final int nQuals = quals.length;
+                final byte[] fastqQuals = new byte[nQuals];
+                for ( int idx = 0; idx != nQuals; ++idx ) {
+                    fastqQuals[idx] = (byte)SAMUtils.phredToFastq(quals[idx]);
+                }
+                writer.write(new String(fastqQuals));
+                writer.write('\n');
+            }
+        } catch ( final IOException ioe ) {
+            throw new GATKException("Failed to write assembly sam file.", ioe);
         }
     }
 
@@ -840,44 +863,6 @@ public class LocalAssembler extends PairWalker {
                 writer.newLine();
                 writer.write(traversal.getSequence());
                 writer.newLine();
-            }
-        } catch ( final IOException ioe ) {
-            throw new GATKException("Failed to write assembly sam file.", ioe);
-        }
-    }
-*/
-    private static void writeAlignments( final List<Traversal> traversals,
-                                         final List<List<MiniMap2Alignment>> allAlignments,
-                                         final List<String> refNames,
-                                         final String fileName ) {
-        try ( final BufferedWriter writer = new BufferedWriter(new FileWriter(fileName)) ) {
-            final int nTraversals = traversals.size();
-            for ( int idx = 0; idx != nTraversals; ++idx ) {
-                final List<MiniMap2Alignment> alignments = allAlignments.get(idx);
-                final int nAlignments = alignments.size();
-                for ( int alignmentIdx = 0; alignmentIdx != nAlignments; ++alignmentIdx ) {
-                    final MiniMap2Alignment alignment = alignments.get(alignmentIdx);
-                    final Traversal traversal = traversals.get(idx);
-                    writer.write(traversal.getName());
-                    writer.write('\t');
-                    final int refId = alignment.getRefId();
-                    final int samFlag = (alignment.isRevStrand() ? 16 : 0) +
-                                        (alignmentIdx == 0 ? 0 : 2048) +
-                                        (refId >= 0 ? 0 : 4);
-                    writer.write(Integer.toString(samFlag));
-                    writer.write('\t');
-                    writer.write(refId >= 0 ? refNames.get(refId) : "*");
-                    writer.write('\t');
-                    writer.write(Integer.toString(alignment.getRefStart()));
-                    writer.write('\t');
-                    writer.write(Integer.toString(alignment.getMapQ()));
-                    writer.write('\t');
-                    writer.write(alignment.getCigar());
-                    writer.write("\t*\t0\t0\t");
-                    writer.write(traversal.getSequence());
-                    writer.write("\t*");
-                    writer.newLine();
-                }
             }
         } catch ( final IOException ioe ) {
             throw new GATKException("Failed to write assembly sam file.", ioe);
