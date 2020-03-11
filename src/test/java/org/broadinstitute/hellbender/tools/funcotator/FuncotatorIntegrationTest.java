@@ -697,7 +697,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 outputFormatType,
                 false);
 
-        // Transcript selection:
+        // RefSeqTranscript selection:
         arguments.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.BEST_EFFECT.toString());
         arguments.addArgument(FuncotatorArgumentDefinitions.TRANSCRIPT_LIST_LONG_NAME, transcriptIdFile.toString());
 

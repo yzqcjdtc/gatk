@@ -915,7 +915,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         // If the coding sequence (following the appropriate reference) of a transcript finishes >50bp from a downstream splice site then it is tagged as NMD. If the variant does not cover the full reference coding sequence then it is annotated as NMD if NMD is unavoidable i.e. no matter what the exon structure of the missing portion is the transcript will be subject to NMD.
         NONSENSE_MEDIATED_DECAY("nonsense_mediated_decay"),
 
-        // Transcript that has polyA features (including signal) without a prior stop codon in the CDS, i.e. a non-genomic polyA tail attached directly to the CDS without 3' UTR. These transcripts are subject to degradation.
+        // RefSeqTranscript that has polyA features (including signal) without a prior stop codon in the CDS, i.e. a non-genomic polyA tail attached directly to the CDS without 3' UTR. These transcripts are subject to degradation.
         NON_STOP_DECAY("non_stop_decay"),
 
         // Alternatively spliced transcript believed to contain intronic sequence relative to other, coding, variants.
@@ -927,10 +927,10 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         // Doesn't contain an ORF.
         PROCESSED_TRANSCRIPT("processed_transcript"),
 
-        // Transcript which is known from the literature to not be protein coding.
+        // RefSeqTranscript which is known from the literature to not be protein coding.
         NON_CODING("non_coding"),
 
-        // Transcript believed to be protein coding, but with more than one possible open reading frame.
+        // RefSeqTranscript believed to be protein coding, but with more than one possible open reading frame.
         AMBIGUOUS_ORF("ambiguous_orf"),
 
         // Long non-coding transcript in introns of a coding gene that does not overlap any exons.
@@ -981,7 +981,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         // Unspliced lncRNA that is several kb in size.
         MACRO_LNCRNA("macro_lncRNA"),
 
-        // Transcript where ditag and/or published experimental data strongly supports the existence of short non-coding transcripts transcribed from the 3'UTR.
+        // RefSeqTranscript where ditag and/or published experimental data strongly supports the existence of short non-coding transcripts transcribed from the 3'UTR.
         THREE_PRIME_OVERLAPPING_NCRNA("3prime_overlapping_ncRNA"),
 
         // Otherwise viable coding region omitted from this alternatively spliced transcript because the splice variation affects a region coding for a protein domain.
@@ -1108,7 +1108,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         ALTERNATIVE_5_UTR("alternative_5_UTR"),
 
         /** Please note that the ordering of the APPRIS_* tags is also used in sorting here.  Do not re-order. */
-        /** Transcript expected to code for the main functional isoform based on a range of protein features (APPRIS pipeline). */
+        /** RefSeqTranscript expected to code for the main functional isoform based on a range of protein features (APPRIS pipeline). */
         APPRIS_PRINCIPAL("appris_principal"),
 
         /** (This flag corresponds to the older flag "appris_principal") Where the transcript expected to code for the main */
@@ -1153,10 +1153,10 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         /** identifies a subset of representative transcripts for each gene; prioritises full-length protein coding transcripts */
         BASIC("basic"),
 
-        /** Transcript contains two confidently annotated CDSs. Support may come from eg proteomic data, cross-species conservation */
+        /** RefSeqTranscript contains two confidently annotated CDSs. Support may come from eg proteomic data, cross-species conservation */
         BICISTRONIC("bicistronic"),
 
-        /** Transcript 5' end overlaps ENCODE or Fantom CAGE cluster. */
+        /** RefSeqTranscript 5' end overlaps ENCODE or Fantom CAGE cluster. */
         CAGE_SUPPORTED_TSS("CAGE_supported_TSS"),
 
         /** member of the consensus CDS gene set, confirming coding regions between ENSEMBL, UCSC, NCBI and HAVANA. */
@@ -1168,25 +1168,25 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         /** The coding region start could not be confirmed. */
         CDS_START_NF("cds_start_NF"),
 
-        /** Transcript QC checked using dotplot to identify features eg splice junctions, end of homology. */
+        /** RefSeqTranscript QC checked using dotplot to identify features eg splice junctions, end of homology. */
         DOTTER_CONFIRMED("dotter_confirmed"),
 
         /** an upstream ATG is used where a downstream ATG seems more evolutionary conserved. */
         DOWNSTREAM_ATG("downstream_ATG"),
 
-        /** Transcript was tested and confirmed experimentally. */
+        /** RefSeqTranscript was tested and confirmed experimentally. */
         EXP_CONF("exp_conf"),
 
         /** locus consists of non-overlapping transcript fragments either because of genome assembly issues (i.e., gaps or */
         FRAGMENTED_LOCUS("fragmented_locus"),
 
-        /** Transcript model contains all possible in-frame exons supported by homology, experimental evidence or conservation, but */
+        /** RefSeqTranscript model contains all possible in-frame exons supported by homology, experimental evidence or conservation, but */
         INFERRED_EXON_COMBINATION("inferred_exon_combination"),
 
-        /** Transcript model is not supported by a single piece of transcript evidence. May be supported by multiple fragments of */
+        /** RefSeqTranscript model is not supported by a single piece of transcript evidence. May be supported by multiple fragments of */
         INFERRED_TRANSCRIPT_MODEL("inferred_transcript_model"),
 
-        /** Transcript supported by transcript evidence that, while ampping best-in-genome, shows regions of poor sequence quality. */
+        /** RefSeqTranscript supported by transcript evidence that, while ampping best-in-genome, shows regions of poor sequence quality. */
         LOW_SEQUENCE_QUALITY("low_sequence_quality"),
 
         /** the mRNA end could not be confirmed. */
@@ -1237,7 +1237,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         /** a transcript is supported by evidence from same species paralogous loci. */
         NOT_BEST_IN_GENOME_EVIDENCE("not_best_in_genome_evidence"),
 
-        /** evidence from other species was used to build model. */
+        /** evidence from other species was used to buildAndWriteLine model. */
         NOT_ORGANISM_SUPPORTED("not_organism_supported"),
 
         /** protein-coding locus with no paralogues or orthologs. */
@@ -1273,13 +1273,13 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         /** protein-coding locus created via retrotransposition. */
         RETROGENE("retrogene"),
 
-        /** Transcript supported by RNAseq data and not supported by mRNA or EST evidence. */
+        /** RefSeqTranscript supported by RNAseq data and not supported by mRNA or EST evidence. */
         RNA_SEQ_SUPPORTED_ONLY("RNA_Seq_supported_only"),
 
-        /** Transcript annotated based on mixture of RNA-seq data and EST/mRNA/protein evidence. */
+        /** RefSeqTranscript annotated based on mixture of RNA-seq data and EST/mRNA/protein evidence. */
         RNA_SEQ_SUPPORTED_PARTIAL("RNA_Seq_supported_partial"),
 
-        /** Transcript that contains a CDS that has a translation initiation site supported by Ribosomal Profiling data. */
+        /** RefSeqTranscript that contains a CDS that has a translation initiation site supported by Ribosomal Profiling data. */
         RP_SUPPORTED_TIS("RP_supported_TIS"),
 
         /** contains a selenocysteine. */
@@ -1288,7 +1288,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         /** a processed pseudogene with one or more introns still present. These are likely formed through the retrotransposition */
         SEMI_PROCESSED("semi_processed"),
 
-        /** Transcript contains at least 1 non-canonical splice junction that is associated with a known or novel genome sequence */
+        /** RefSeqTranscript contains at least 1 non-canonical splice junction that is associated with a known or novel genome sequence */
         SEQUENCE_ERROR("sequence_error"),
 
         /** an upstream ATG exists when a downstream ATG is better supported. */
@@ -1322,7 +1322,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
     }
 
     /**
-     * Transcript score according to how well mRNA and EST alignments match over its full length.
+     * RefSeqTranscript score according to how well mRNA and EST alignments match over its full length.
      *
      * For more information, see:
      *     https://www.gencodegenes.org/data_format.html

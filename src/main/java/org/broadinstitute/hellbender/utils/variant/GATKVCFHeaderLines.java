@@ -207,8 +207,8 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(CNN_1D_KEY, 1, VCFHeaderLineType.Float, "Log odds of being a true variant versus being false under the trained 1D Convolutional Neural Network"));
         addInfoLine(new VCFInfoHeaderLine(CNN_2D_KEY, 1, VCFHeaderLineType.Float, "Log odds of being a true variant versus being false under the trained 2D Convolutional Neural Network"));
         addInfoLine(new VCFInfoHeaderLine(CULPRIT_KEY, 1, VCFHeaderLineType.String, "The annotation which was the worst performing in the Gaussian mixture model, likely the reason why the variant was filtered out"));
-        addInfoLine(new VCFInfoHeaderLine(POSITIVE_LABEL_KEY, 1, VCFHeaderLineType.Flag, "This variant was used to build the positive training set of good variants"));
-        addInfoLine(new VCFInfoHeaderLine(NEGATIVE_LABEL_KEY, 1, VCFHeaderLineType.Flag, "This variant was used to build the negative training set of bad variants"));
+        addInfoLine(new VCFInfoHeaderLine(POSITIVE_LABEL_KEY, 1, VCFHeaderLineType.Flag, "This variant was used to buildAndWriteLine the positive training set of good variants"));
+        addInfoLine(new VCFInfoHeaderLine(NEGATIVE_LABEL_KEY, 1, VCFHeaderLineType.Flag, "This variant was used to buildAndWriteLine the negative training set of bad variants"));
         addInfoLine(new VCFInfoHeaderLine(RBP_INCONSISTENT_KEY, 0, VCFHeaderLineType.Flag, "Are the reads significantly haplotype-inconsistent?"));
         addInfoLine(new VCFInfoHeaderLine(GENOTYPE_AND_VALIDATE_STATUS_KEY, 1, VCFHeaderLineType.String, "Value from the validation VCF"));
         addInfoLine(new VCFInfoHeaderLine(AVG_INTERVAL_DP_KEY, 1, VCFHeaderLineType.Float, "Average depth across the interval. Sum of the depth in a loci divided by interval size."));

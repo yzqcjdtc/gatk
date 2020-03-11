@@ -94,7 +94,7 @@ public final class UnifiedArgumentCollection extends StandardCallerArgumentColle
     public boolean TREAT_ALL_READS_AS_SINGLE_POOL = false;
 
     /*
-       Generalized ploidy argument (debug only): When building site error models, ignore lane information and build only
+       Generalized ploidy argument (debug only): When building site error models, ignore lane information and buildAndWriteLine only
        sample-level error model
      */
     @Hidden
