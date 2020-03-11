@@ -9,6 +9,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.*;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.*;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
@@ -250,6 +251,14 @@ public final class ModelSegments extends CommandLineProgram {
     private File inputNormalAllelicCountsFile = null;
 
     @Argument(
+            doc = "Input file containing segments (output of SegmentJointSamples).  " +
+                    "Segmentation will not be performed by ModelSegments.",
+            fullName = CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME,
+            optional = true
+    )
+    private File inputSegmentsFile = null;
+
+    @Argument(
             doc = "Prefix for output filenames.",
             fullName =  CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME
     )
@@ -296,6 +305,25 @@ public final class ModelSegments extends CommandLineProgram {
         final AllelicCountCollection allelicCounts = readOptionalFileOrNull(inputAllelicCountsFile, AllelicCountCollection::new);
         final AllelicCountCollection normalAllelicCounts = readOptionalFileOrNull(inputNormalAllelicCountsFile, AllelicCountCollection::new);
         final SampleLocatableMetadata metadata = CopyNumberArgumentValidationUtils.getValidatedMetadata(denoisedCopyRatios, allelicCounts);
+        if (normalAllelicCounts != null) {
+            if (!normalAllelicCounts.getIntervals().equals(allelicCounts.getIntervals())) {
+                throw new UserException.BadInput("Allelic-count sites in case sample and matched normal do not match. " +
+                        "Run CollectAllelicCounts using the same interval list of sites for both samples.");
+            }
+            if (!CopyNumberArgumentValidationUtils.isSameDictionary(
+                    normalAllelicCounts.getMetadata().getSequenceDictionary(),
+                    metadata.getSequenceDictionary())) {
+                logger.warn("Sequence dictionary in normal allelic-counts file does not match.");
+            }
+        }
+        final SimpleIntervalCollection inputSegments = readOptionalFileOrNull(inputSegmentsFile, SimpleIntervalCollection::new);
+        if (inputSegments != null) {
+            if (!CopyNumberArgumentValidationUtils.isSameDictionary(
+                    inputSegments.getMetadata().getSequenceDictionary(),
+                    metadata.getSequenceDictionary())) {
+                logger.warn("Sequence dictionary in segments file does not match.");
+            }
+        }
 
         //genotype hets
         //hetAllelicCounts is set to an empty collection containing only metadata if no allelic counts are available;
@@ -333,7 +361,10 @@ public final class ModelSegments extends CommandLineProgram {
         //at this point, both denoisedCopyRatios and hetAllelicCounts are non-null, but may be empty;
         //perform one-dimensional or multidimensional segmentation as appropriate
         final SimpleIntervalCollection segments;
-        if (!denoisedCopyRatios.getRecords().isEmpty() && hetAllelicCounts.getRecords().isEmpty()) {
+        if (inputSegments != null) {
+            logger.info("Using input segmentation...");
+            segments = inputSegments;
+        } else if (!denoisedCopyRatios.getRecords().isEmpty() && hetAllelicCounts.getRecords().isEmpty()) {
             segments = performCopyRatioSegmentation(denoisedCopyRatios);
         } else if (denoisedCopyRatios.getRecords().isEmpty() && !hetAllelicCounts.getRecords().isEmpty()) {
             segments = performAlleleFractionSegmentation(hetAllelicCounts);
@@ -409,7 +440,8 @@ public final class ModelSegments extends CommandLineProgram {
         CopyNumberArgumentValidationUtils.validateInputs(
                 inputDenoisedCopyRatiosFile,
                 inputAllelicCountsFile,
-                inputNormalAllelicCountsFile);
+                inputNormalAllelicCountsFile,
+                inputSegmentsFile);
         Utils.nonEmpty(outputPrefix);
         CopyNumberArgumentValidationUtils.validateAndPrepareOutputDirectories(outputDir);
 
