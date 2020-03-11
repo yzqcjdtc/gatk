@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
 
-public class ModelSegmentsModelingArgumentCollection implements Serializable {
+public class SomaticModelingArgumentCollection implements Serializable {
     public static final long serialVersionUID = 1L;
 
     //MCMC argument names

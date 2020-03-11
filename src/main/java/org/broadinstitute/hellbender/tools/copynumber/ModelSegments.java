@@ -264,10 +264,10 @@ public final class ModelSegments extends CommandLineProgram {
     private File outputDir;
 
     @ArgumentCollection
-    private ModelSegmentsGenotypingArgumentCollection genotypingArguments = new ModelSegmentsGenotypingArgumentCollection();
+    private SomaticGenotypingArgumentCollection genotypingArguments = new SomaticGenotypingArgumentCollection();
 
     @ArgumentCollection
-    private ModelSegmentsSegmentationArgumentCollection segmentationArguments = new ModelSegmentsSegmentationArgumentCollection();
+    private SomaticSegmentationArgumentCollection segmentationArguments = new SomaticSegmentationArgumentCollection();
     private final int maxNumSegmentsPerChromosome = segmentationArguments.maxNumSegmentsPerChromosome;
     private final double kernelVarianceCopyRatio = segmentationArguments.kernelVarianceCopyRatio;
     private final double kernelVarianceAlleleFraction = segmentationArguments.kernelVarianceAlleleFraction;
@@ -277,7 +277,7 @@ public final class ModelSegments extends CommandLineProgram {
     private final double numChangepointsPenaltyFactor = segmentationArguments.numChangepointsPenaltyFactor;
 
     @ArgumentCollection
-    private ModelSegmentsModelingArgumentCollection modelingArguments = new ModelSegmentsModelingArgumentCollection();
+    private SomaticModelingArgumentCollection modelingArguments = new SomaticModelingArgumentCollection();
     private final double minorAlleleFractionPriorAlpha = modelingArguments.minorAlleleFractionPriorAlpha;
     private final int numSamplesCopyRatio = modelingArguments.numSamplesCopyRatio;
     private final int numBurnInCopyRatio = modelingArguments.numBurnInCopyRatio;

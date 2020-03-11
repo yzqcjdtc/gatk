@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class ModelSegmentsSegmentationArgumentCollection implements Serializable {
+public class SomaticSegmentationArgumentCollection implements Serializable {
     public static final long serialVersionUID = 1L;
 
     //segmentation argument names

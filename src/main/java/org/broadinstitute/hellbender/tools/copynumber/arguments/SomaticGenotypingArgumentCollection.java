@@ -4,7 +4,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 
 import java.io.Serializable;
 
-public class ModelSegmentsGenotypingArgumentCollection implements Serializable {
+public class SomaticGenotypingArgumentCollection implements Serializable {
     public static final long serialVersionUID = 1L;
 
     //het genotyping argument names

@@ -6,7 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
-import org.broadinstitute.hellbender.tools.copynumber.arguments.ModelSegmentsGenotypingArgumentCollection;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.SomaticGenotypingArgumentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AllelicCountCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
@@ -54,7 +54,7 @@ public final class NaiveHeterozygousPileupGenotypingUtils {
     public static NaiveHeterozygousPileupGenotypingResult genotypeHets(final CopyRatioCollection denoisedCopyRatios,
                                                                        final AllelicCountCollection allelicCounts,
                                                                        final AllelicCountCollection normalAllelicCounts,
-                                                                       final ModelSegmentsGenotypingArgumentCollection genotypingArguments) {
+                                                                       final SomaticGenotypingArgumentCollection genotypingArguments) {
         Utils.nonNull(allelicCounts);
         Utils.nonNull(genotypingArguments);
         final SampleLocatableMetadata metadata = CopyNumberArgumentValidationUtils.getValidatedMetadata(
