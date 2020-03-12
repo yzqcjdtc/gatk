@@ -93,7 +93,7 @@ import java.util.stream.IntStream;
  *
  * <p>The calls or model shards can be specified in arbitrary order.</p>
  *
- * <h3>Usage example</h3>
+ * <h3>Usage examples</h3>
  *
  * <pre>
  *   gatk PostprocessGermlineCNVCalls \

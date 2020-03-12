@@ -35,10 +35,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Models segmented copy ratios from denoised read counts and segmented minor-allele fractions from allelic counts.
+ * Models segmented copy ratios from denoised copy ratios and segmented minor-allele fractions from allelic counts.
  *
  * <p>
- *     Possible inputs are: 1) denoised copy ratios for the case sample, 2) allelic counts for the case sample,
+ *     Possible data inputs are: 1) denoised copy ratios for the case sample, 2) allelic counts for the case sample,
  *     and 3) allelic counts for a matched-normal sample.  All available inputs will be used to to perform
  *     segmentation and model inference.
  * </p>
@@ -59,7 +59,8 @@ import java.util.stream.Collectors;
  *     Next, we segment, if available, the denoised copy ratios and the alternate-allele fractions at the
  *     genotyped heterozygous sites.  This is done using kernel segmentation (see {@link KernelSegmenter}).
  *     Various segmentation parameters control the sensitivity of the segmentation and should be selected
- *     appropriately for each analysis.
+ *     appropriately for each analysis.  If a segments file produced by {@link SegmentJointSamples} has been provided,
+ *     the corresponding segmentation will be used instead and this step will be skipped.
  * </p>
  *
  * <p>
@@ -95,6 +96,10 @@ import java.util.stream.Collectors;
  *     <li>
  *         (Optional) Matched-normal allelic-counts file from {@link CollectAllelicCounts}.
  *         This can only be provided if allelic counts for the case sample are also provided.
+ *     </li>
+ *     <li>
+ *         (Optional) Segments file from {@link SegmentJointSamples}.
+ *         Segmentation will not be performed by {@link ModelSegments}.
  *     </li>
  *     <li>
  *         Output prefix.
@@ -134,7 +139,7 @@ import java.util.stream.Collectors;
  *         and the final result after segmentation smoothing is output to the .modelFinal.cr.param file.
  *     </li>
  *     <li>
- *         Copy-ratio segment file (.cr.seg).
+ *         Copy-ratio segments file (.cr.seg).
  *         This is a tab-separated values (TSV) file with a SAM-style header containing a read group sample name, a sequence dictionary,
  *         a row specifying the column headers contained in {@link CopyRatioSegmentCollection.CopyRatioSegmentTableColumn},
  *         and the corresponding entry rows.
@@ -208,11 +213,21 @@ import java.util.stream.Collectors;
  *          -O output_dir
  * </pre>
  *
+ * <pre>
+ *     gatk ModelSegments \
+ *          --denoised-copy-ratios tumor.denoisedCR.tsv \
+ *          --allelic-counts tumor.allelicCounts.tsv \
+ *          --normal-allelic-counts normal.allelicCounts.tsv \
+ *          --segments tumor.joint.seg \
+ *          --output-prefix tumor \
+ *          -O output_dir
+ * </pre>
+ *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Models segmented copy ratios from denoised read counts and segmented minor-allele fractions from allelic counts",
-        oneLineSummary = "Models segmented copy ratios from denoised read counts and segmented minor-allele fractions from allelic counts",
+        summary = "Models segmented copy ratios from denoised copy ratios and segmented minor-allele fractions from allelic counts",
+        oneLineSummary = "Models segmented copy ratios from denoised copy ratios and segmented minor-allele fractions from allelic counts",
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
