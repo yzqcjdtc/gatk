@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
@@ -27,36 +26,27 @@ import java.util.Arrays;
  */
 public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_SUB_DIR = new File(toolsTestDir, "copynumber");
-//    private static final File TUMOR_DENOISED_COPY_RATIOS_FILE = new File(TEST_SUB_DIR,
-//            "model-segments-wes-tumor-denoised-copy-ratios-SM-74P4M-v1-chr20-downsampled.deduplicated.denoisedCR.tsv");
-//    private static final File TUMOR_ALLELIC_COUNTS_FILE = new File(TEST_SUB_DIR,
-//            "model-segments-wes-tumor-allelic-counts-SM-74P4M-v1-chr20-downsampled.deduplicated.allelicCounts.tsv");
-//    private static final File NORMAL_ALLELIC_COUNTS_FILE = new File(TEST_SUB_DIR,
-//            "model-segments-wes-normal-allelic-counts-SM-74NEG-v1-chr20-downsampled.deduplicated.allelicCounts.tsv");
+    private static final File TUMOR_DENOISED_COPY_RATIOS_FILE = new File(TEST_SUB_DIR,
+            "model-segments-wes-tumor-denoised-copy-ratios-SM-74P4M-v1-chr20-downsampled.deduplicated.denoisedCR.tsv");
+    private static final File TUMOR_ALLELIC_COUNTS_FILE = new File(TEST_SUB_DIR,
+            "model-segments-wes-tumor-allelic-counts-SM-74P4M-v1-chr20-downsampled.deduplicated.allelicCounts.tsv");
+    private static final File NORMAL_ALLELIC_COUNTS_FILE = new File(TEST_SUB_DIR,
+            "model-segments-wes-normal-allelic-counts-SM-74NEG-v1-chr20-downsampled.deduplicated.allelicCounts.tsv");
     private static final File TUMOR_DENOISED_COPY_RATIOS_WITH_SAMPLE_NAME_MISMATCH_FILE = new File(TEST_SUB_DIR,
             "model-segments-wes-tumor-denoised-copy-ratios-with-sample-name-mismatch.denoisedCR.tsv");
     private static final File NORMAL_ALLELIC_COUNTS_FILE_WITH_MISSING_SITES = new File(TEST_SUB_DIR,
             "model-segments-wes-normal-allelic-counts-with-missing-sites.allelicCounts.tsv");
 
-//    private static final File TUMOR_DENOISED_COPY_RATIOS_FILE = new File("/home/slee/working/germline-tagging/REBC-AC9B/REBC-AC9B-TTP1-A-1-1-D-A525-36.denoisedCR.tsv");
-//    private static final File TUMOR_ALLELIC_COUNTS_FILE = new File("/home/slee/working/germline-tagging/REBC-AC9B/REBC-AC9B-TTP1-A-1-1-D-A525-36.allelicCounts.tsv");
-//    private static final File NORMAL_ALLELIC_COUNTS_FILE = new File("/home/slee/working/germline-tagging/REBC-AC9B/REBC-AC9B-NB1-A-1-0-D-A553-36.allelicCounts.tsv");
-
-    private static final File TUMOR_DENOISED_COPY_RATIOS_FILE = new File("/home/slee/working/germline-tagging/REBC-AC9B/chr13.REBC-AC9B-TTP1-A-1-1-D-A525-36.denoisedCR.tsv");
-    private static final File TUMOR_ALLELIC_COUNTS_FILE = new File("/home/slee/working/germline-tagging/REBC-AC9B/chr13.REBC-AC9B-TTP1-A-1-1-D-A525-36.allelicCounts.tsv");
-    private static final File NORMAL_ALLELIC_COUNTS_FILE = new File("/home/slee/working/germline-tagging/REBC-AC9B/chr13.REBC-AC9B-NB1-A-1-0-D-A553-36.allelicCounts.tsv");
-
     private static final SampleLocatableMetadata EXPECTED_METADATA = new CopyRatioCollection(TUMOR_DENOISED_COPY_RATIOS_FILE).getMetadata();
 
     @Test
     public void testAllInputsAvailable() {
-        final File outputDir = new File("/home/slee/working/ms-test"); //createTempDir("testDir");
-        final String outputPrefix = "test-all";
+        final File outputDir = createTempDir("testDir");
+        final String outputPrefix = "test";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .add(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
                 .add(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
                 .add(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE.getAbsolutePath())
-                .add(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO")
                 .addOutput(outputDir)
                 .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
         runCommandLine(argsBuilder);
@@ -65,12 +55,11 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testNoNormalAllelicCounts() {
-        final File outputDir = new File("/home/slee/working/ms-test"); //createTempDir("testDir");
-        final String outputPrefix = "test-cr-ac";
+        final File outputDir = createTempDir("testDir");
+        final String outputPrefix = "test";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .add(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
                 .add(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
-                .add(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO")
                 .addOutput(outputDir)
                 .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
         runCommandLine(argsBuilder);
@@ -79,12 +68,11 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testNoDenoisedCopyRatios() {
-        final File outputDir = new File("/home/slee/working/ms-test"); //createTempDir("testDir");
-        final String outputPrefix = "test-ac-nac";
+        final File outputDir = createTempDir("testDir");
+        final String outputPrefix = "test";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .add(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
                 .add(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE.getAbsolutePath())
-                .add(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO")
                 .addOutput(outputDir)
                 .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
         runCommandLine(argsBuilder);
@@ -93,11 +81,10 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testAllelicCountsOnly() {
-        final File outputDir = new File("/home/slee/working/ms-test"); //createTempDir("testDir");
-        final String outputPrefix = "test-ac";
+        final File outputDir = createTempDir("testDir");
+        final String outputPrefix = "test";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .add(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
-                .add(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO")
                 .addOutput(outputDir)
                 .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
         runCommandLine(argsBuilder);
@@ -106,11 +93,10 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testNoAllelicCounts() {
-        final File outputDir = new File("/home/slee/working/ms-test"); //createTempDir("testDir");
-        final String outputPrefix = "test-cr";
+        final File outputDir = createTempDir("testDir");
+        final String outputPrefix = "test";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .add(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
-                .add(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO")
                 .addOutput(outputDir)
                 .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
         runCommandLine(argsBuilder);
