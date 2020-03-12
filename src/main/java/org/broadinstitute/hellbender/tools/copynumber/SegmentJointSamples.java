@@ -2,8 +2,6 @@ package org.broadinstitute.hellbender.tools.copynumber;
 
 import com.google.common.collect.ImmutableSet;
 import htsjdk.samtools.SAMSequenceDictionary;
-import org.apache.commons.collections4.ListUtils;
-import org.bdgenomics.adam.models.SequenceDictionary;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -15,10 +13,10 @@ import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgume
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.SomaticGenotypingArgumentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.SomaticSegmentationArgumentCollection;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.*;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AllelicCountCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.LocatableMetadata;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.Metadata;
-import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.segmentation.MultisampleMultidimensionalKernelSegmenter;
 import org.broadinstitute.hellbender.tools.copynumber.utils.genotyping.NaiveHeterozygousPileupGenotypingUtils;
 import org.broadinstitute.hellbender.tools.copynumber.utils.segmentation.KernelSegmenter;

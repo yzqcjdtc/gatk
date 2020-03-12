@@ -4,19 +4,15 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
-import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.*;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
-import org.broadinstitute.hellbender.tools.copynumber.models.AlleleFractionParameter;
-import org.broadinstitute.hellbender.tools.copynumber.models.CopyRatioParameter;
 import org.broadinstitute.hellbender.tools.copynumber.models.MultidimensionalModellerUnitTest;
 import org.broadinstitute.hellbender.tools.copynumber.segmentation.MultidimensionalKernelSegmenterUnitTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.Arrays;
 
 /**
  * Integration tests for {@link ModelSegments}.  We test for input validation across various run modes of the tool

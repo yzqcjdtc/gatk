@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.collections.Alleli
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AllelicCount;
-import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatio;
 import org.broadinstitute.hellbender.tools.copynumber.utils.segmentation.KernelSegmenter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
