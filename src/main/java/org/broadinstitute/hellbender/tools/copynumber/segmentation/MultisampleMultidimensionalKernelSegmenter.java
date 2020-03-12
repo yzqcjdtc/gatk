@@ -1,14 +1,17 @@
 package org.broadinstitute.hellbender.tools.copynumber.segmentation;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AllelicCountCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.LocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AllelicCount;
 import org.broadinstitute.hellbender.tools.copynumber.utils.segmentation.KernelSegmenter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -20,6 +23,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Segments copy-ratio and alternate-allele-fraction data from multiple samples using kernel segmentation.
@@ -74,22 +78,18 @@ public final class MultisampleMultidimensionalKernelSegmenter {
     }
 
     private final int numSamples;
-    private final List<CopyRatioCollection> denoisedCopyRatiosList;
-    private final List<AllelicCountCollection> allelicCountsList;
-    final CopyRatioCollection denoisedCopyRatiosFirstSample;
-    final AllelicCountCollection allelicCountsFirstSample;
+    private final CopyRatioCollection denoisedCopyRatiosFirstSample;
+    private final AllelicCountCollection allelicCountsFirstSample;
     private final OverlapDetector<AllelicCount> allelicCountOverlapDetector;
     private final Comparator<Locatable> comparator;
     private final Map<String, List<MultidimensionalPoint>> multidimensionalPointsPerChromosome;
 
-    public MultisampleMultidimensionalKernelSegmenter(final List<CopyRatioCollection> denoisedCopyRatiosList,
-                                                      final List<AllelicCountCollection> allelicCountsList) {
-        validateInputs(denoisedCopyRatiosList, allelicCountsList);
-        numSamples = denoisedCopyRatiosList.size();
-        this.denoisedCopyRatiosList = denoisedCopyRatiosList;
-        this.allelicCountsList = allelicCountsList;
-        denoisedCopyRatiosFirstSample = denoisedCopyRatiosList.get(0);
-        allelicCountsFirstSample = allelicCountsList.get(0);
+    public MultisampleMultidimensionalKernelSegmenter(final List<CopyRatioCollection> denoisedCopyRatiosPerSample,
+                                                      final List<AllelicCountCollection> allelicCountsPerSample) {
+        validateInputs(denoisedCopyRatiosPerSample, allelicCountsPerSample);
+        numSamples = denoisedCopyRatiosPerSample.size();
+        denoisedCopyRatiosFirstSample = denoisedCopyRatiosPerSample.get(0);
+        allelicCountsFirstSample = allelicCountsPerSample.get(0);
         allelicCountOverlapDetector = allelicCountsFirstSample.getOverlapDetector();
         this.comparator = denoisedCopyRatiosFirstSample.getComparator();
         final Map<SimpleInterval, Integer> allelicSiteToIndexMap = IntStream.range(0, allelicCountsFirstSample.size()).boxed()
@@ -120,10 +120,10 @@ public final class MultisampleMultidimensionalKernelSegmenter {
         multidimensionalPointsPerChromosome = IntStream.range(0, denoisedCopyRatiosFirstSample.getRecords().size()).boxed()
                 .map(i -> new MultidimensionalPoint(
                         denoisedCopyRatiosFirstSample.getRecords().get(i).getInterval(),
-                        denoisedCopyRatiosList.stream()
+                        denoisedCopyRatiosPerSample.stream()
                                 .mapToDouble(denoisedCopyRatios -> denoisedCopyRatios.getRecords().get(i).getLog2CopyRatioValue())
                                 .toArray(),
-                        allelicCountsList.stream()
+                        allelicCountsPerSample.stream()
                                 .map(allelicCounts -> intervalIndexToSiteIndexMap.get(i) != -1
                                         ? allelicCounts.getRecords().get(intervalIndexToSiteIndexMap.get(i))
                                         : BALANCED_ALLELIC_COUNT)
@@ -135,17 +135,47 @@ public final class MultisampleMultidimensionalKernelSegmenter {
                         Collectors.toList()));
     }
 
-    //TODO
-    private static void validateInputs(final List<CopyRatioCollection> denoisedCopyRatiosList,
-                                       final List<AllelicCountCollection> allelicCountsList) {
-        Utils.nonEmpty(denoisedCopyRatiosList);
-        Utils.nonEmpty(allelicCountsList);
-        Utils.validateArg(denoisedCopyRatiosList.size() == allelicCountsList.size(),
+    //TODO most of this is redundant with validation performed in SegmentJointSamples, eliminate?
+    private static void validateInputs(final List<CopyRatioCollection> denoisedCopyRatiosPerSample,
+                                       final List<AllelicCountCollection> allelicCountsPerSample) {
+        Utils.nonEmpty(denoisedCopyRatiosPerSample);
+        Utils.nonEmpty(allelicCountsPerSample);
+        Utils.validateArg(denoisedCopyRatiosPerSample.size() == allelicCountsPerSample.size(),
                 "Number of copy-ratio and allelic-count collections must be equal.");
-        //all CR intervals equal
-        //all AC sites equal
-        //all SDs equal
-        //sample names match
+        final List<LocatableMetadata> metadataDenoisedCopyRatiosPerSample = denoisedCopyRatiosPerSample.stream()
+                .map(CopyRatioCollection::getMetadata)
+                .collect(Collectors.toList());
+        final List<LocatableMetadata> metadataAllelicCountsPerSample = allelicCountsPerSample.stream()
+                .map(AllelicCountCollection::getMetadata)
+                .collect(Collectors.toList());
+
+        Utils.validateArg(IntStream.range(0, denoisedCopyRatiosPerSample.size())
+                        .allMatch(i -> metadataDenoisedCopyRatiosPerSample.equals(metadataAllelicCountsPerSample)),
+                "Metadata do not match across copy-ratio and allelic-count collections for the case samples.  " +
+                        "Check that the sample orders for the corresponding inputs are identical.");
+
+        Utils.validateArg((int) denoisedCopyRatiosPerSample.stream()
+                        .map(CopyRatioCollection::getIntervals)
+                        .distinct()
+                        .count() == 1,
+                "Copy-ratio intervals must be identical across all case samples.");
+
+        Utils.validateArg((int) allelicCountsPerSample.stream()
+                        .map(AllelicCountCollection::getIntervals)
+                        .distinct()
+                        .count() == 1,
+                "Allelic-count sites must be identical across all case samples.");
+
+        final List<SAMSequenceDictionary> sequenceDictionaries = Stream.of(
+                metadataDenoisedCopyRatiosPerSample.stream().map(LocatableMetadata::getSequenceDictionary).collect(Collectors.toList()),
+                metadataAllelicCountsPerSample.stream().map(LocatableMetadata::getSequenceDictionary).collect(Collectors.toList()))
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList());
+        IntStream.range(0, sequenceDictionaries.size() - 1).forEach(i -> {
+            if (!CopyNumberArgumentValidationUtils.isSameDictionary(sequenceDictionaries.get(i), sequenceDictionaries.get(i + 1))) {
+                logger.warn("Sequence dictionaries do not match across all case-sample inputs.");
+            }
+        });
     }
 
     /**
@@ -230,7 +260,7 @@ public final class MultisampleMultidimensionalKernelSegmenter {
         final double standardDeviationAlleleFraction = Math.sqrt(kernelVarianceAlleleFraction);
         return (p1, p2) -> {
             double sum = 0.;
-            for (int sampleIndex = 0; sampleIndex < denoisedCopyRatiosList.size(); sampleIndex++) {
+            for (int sampleIndex = 0; sampleIndex < numSamples; sampleIndex++) {
                 sum += KERNEL.apply(standardDeviationCopyRatio).apply(p1.log2CopyRatios[sampleIndex], p2.log2CopyRatios[sampleIndex]) +
                         kernelScalingAlleleFraction * KERNEL.apply(standardDeviationAlleleFraction).apply(p1.alternateAlleleFractions[sampleIndex], p2.alternateAlleleFractions[sampleIndex]);
             }

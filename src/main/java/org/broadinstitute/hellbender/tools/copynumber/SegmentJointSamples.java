@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
 import com.google.common.collect.ImmutableSet;
+import htsjdk.samtools.SAMSequenceDictionary;
+import org.apache.commons.collections4.ListUtils;
+import org.bdgenomics.adam.models.SequenceDictionary;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -13,8 +16,9 @@ import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStanda
 import org.broadinstitute.hellbender.tools.copynumber.arguments.SomaticGenotypingArgumentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.SomaticSegmentationArgumentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.*;
-import org.broadinstitute.hellbender.tools.copynumber.models.AlleleFractionModeller;
-import org.broadinstitute.hellbender.tools.copynumber.models.CopyRatioModeller;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.LocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.Metadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.segmentation.MultisampleMultidimensionalKernelSegmenter;
 import org.broadinstitute.hellbender.tools.copynumber.utils.genotyping.NaiveHeterozygousPileupGenotypingUtils;
 import org.broadinstitute.hellbender.tools.copynumber.utils.segmentation.KernelSegmenter;
@@ -22,10 +26,13 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Finds common segments across multiple case samples using denoised copy ratios and allelic counts.
@@ -167,32 +174,38 @@ public final class SegmentJointSamples extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
+        logHeapUsage("initializing engine");
+
         validateArguments();
 
+        //TODO allow combinations of optional inputs and validate accordingly; for now, all inputs are required
         //read input files (return null if not available) and validate metadata
-        logHeapUsage("reading input files");
-        final List<CopyRatioCollection> denoisedCopyRatiosList = inputDenoisedCopyRatiosFiles.stream()
+        final List<CopyRatioCollection> denoisedCopyRatiosPerSample = inputDenoisedCopyRatiosFiles.stream()
                 .map(f -> readOptionalFileOrNull(f, CopyRatioCollection::new))
                 .collect(Collectors.toList());
-        final List<AllelicCountCollection> allelicCountsList = inputAllelicCountsFiles.stream()
+        final List<AllelicCountCollection> allelicCountsPerSample = inputAllelicCountsFiles.stream()
                 .map(f -> readOptionalFileOrNull(f, AllelicCountCollection::new))
                 .collect(Collectors.toList());
         final AllelicCountCollection normalAllelicCounts = new AllelicCountCollection(inputNormalAllelicCountsFile);
+        logHeapUsage("reading input files");
 
-        //validate metadata
-        //TODO
+        validateData(denoisedCopyRatiosPerSample, allelicCountsPerSample, normalAllelicCounts);
+        logHeapUsage("validating input files");
 
         //genotype hets (return empty collection containing only metadata if no allelic counts available)
         //TODO could eliminate some redundant computation/logging
-        final List<AllelicCountCollection> hetAllelicCountsList = IntStream.range(0, denoisedCopyRatiosList.size()).boxed()
-                .map(i -> NaiveHeterozygousPileupGenotypingUtils.genotypeHets(
-                        denoisedCopyRatiosList.get(i), allelicCountsList.get(i), normalAllelicCounts, genotypingArguments)
-                        .getHetAllelicCounts())
+        final List<AllelicCountCollection> hetAllelicCountsList = IntStream.range(0, denoisedCopyRatiosPerSample.size()).boxed()
+                .map(i -> {
+                    logger.info(String.format("Genotyping case sample %d / %d...", i + 1, denoisedCopyRatiosPerSample.size()));
+                    return NaiveHeterozygousPileupGenotypingUtils.genotypeHets(
+                            denoisedCopyRatiosPerSample.get(i), allelicCountsPerSample.get(i), normalAllelicCounts, genotypingArguments)
+                            .getHetAllelicCounts();
+                })
                 .collect(Collectors.toList());
         logHeapUsage("genotyping hets");
 
+        //TODO allow combinations of optional inputs and segment accordingly; for now, all inputs are required
         //if denoised copy ratios are still null at this point, we assign an empty collection containing only metadata
-
         //at this point, both denoisedCopyRatios and hetAllelicCounts are non-null, but may be empty;
         //perform one-dimensional or multidimensional segmentation as appropriate
 //        final MultidimensionalSegmentCollection multidimensionalSegments;
@@ -217,12 +230,12 @@ public final class SegmentJointSamples extends CommandLineProgram {
 //                            ImmutableSet.copyOf(windowSizes).asList(),
 //                            numChangepointsPenaltyFactor, numChangepointsPenaltyFactor);
 //        }
-        final SimpleIntervalCollection segments = new MultisampleMultidimensionalKernelSegmenter(denoisedCopyRatiosList, hetAllelicCountsList)
+        final SimpleIntervalCollection segments = new MultisampleMultidimensionalKernelSegmenter(denoisedCopyRatiosPerSample, hetAllelicCountsList)
                 .findSegmentation(maxNumSegmentsPerChromosome,
                         kernelVarianceCopyRatio, kernelVarianceAlleleFraction, kernelScalingAlleleFraction, kernelApproximationDimension,
                         ImmutableSet.copyOf(windowSizes).asList(),
                         numChangepointsPenaltyFactor, numChangepointsPenaltyFactor);
-        logHeapUsage("performing multidimensional segmentation");
+        logHeapUsage("performing segmentation");
 
         //write segments to file
         segments.write(outputSegmentsFile);
@@ -234,7 +247,7 @@ public final class SegmentJointSamples extends CommandLineProgram {
 
     private void validateArguments() {
         Utils.validateArg(inputDenoisedCopyRatiosFiles.size() == inputAllelicCountsFiles.size(),
-                "Number of denoised-copy-ratios files and allelic-counts files must be equal.");
+                "Number of denoised-copy-ratios files and allelic-counts files for the case samples must be equal.");
 
         final int maxNumInputFiles = 2 * inputDenoisedCopyRatiosFiles.size() + 1;
         final List<File> inputFiles = new ArrayList<>(maxNumInputFiles);
@@ -253,5 +266,49 @@ public final class SegmentJointSamples extends CommandLineProgram {
         }
         logger.info(String.format("Reading file (%s)...", file));
         return read.apply(file);
+    }
+
+    private void validateData(final List<CopyRatioCollection> denoisedCopyRatiosPerSample,
+                              final List<AllelicCountCollection> allelicCountsPerSample,
+                              final AllelicCountCollection normalAllelicCounts) {
+        Utils.validateArg(denoisedCopyRatiosPerSample.size() == allelicCountsPerSample.size(),
+                "Number of copy-ratio and allelic-count collections for the case samples must be equal.");
+
+        final List<LocatableMetadata> metadataDenoisedCopyRatiosPerSample = denoisedCopyRatiosPerSample.stream()
+                .map(CopyRatioCollection::getMetadata)
+                .collect(Collectors.toList());
+        final List<LocatableMetadata> metadataAllelicCountsPerSample = allelicCountsPerSample.stream()
+                .map(AllelicCountCollection::getMetadata)
+                .collect(Collectors.toList());
+
+        Utils.validateArg(IntStream.range(0, denoisedCopyRatiosPerSample.size())
+                .allMatch(i -> metadataDenoisedCopyRatiosPerSample.equals(metadataAllelicCountsPerSample)),
+                "Metadata do not match across copy-ratio and allelic-count collections for the case samples.  " +
+                        "Check that the sample orders for the corresponding inputs are identical.");
+
+        Utils.validateArg((int) denoisedCopyRatiosPerSample.stream()
+                .map(CopyRatioCollection::getIntervals)
+                .distinct()
+                .count() == 1,
+                "Copy-ratio intervals must be identical across all case samples.");
+
+        Utils.validateArg((int) Stream.of(allelicCountsPerSample, Collections.singletonList(normalAllelicCounts))
+                        .flatMap(Collection::stream)
+                        .map(AllelicCountCollection::getIntervals)
+                        .distinct()
+                        .count() == 1,
+                "Allelic-count sites must be identical across all samples.");
+
+        final List<SAMSequenceDictionary> sequenceDictionaries = Stream.of(
+                metadataDenoisedCopyRatiosPerSample.stream().map(LocatableMetadata::getSequenceDictionary).collect(Collectors.toList()),
+                metadataAllelicCountsPerSample.stream().map(LocatableMetadata::getSequenceDictionary).collect(Collectors.toList()),
+                Collections.singletonList(normalAllelicCounts.getMetadata().getSequenceDictionary()))
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList());
+        IntStream.range(0, sequenceDictionaries.size() - 1).forEach(i -> {
+            if (!CopyNumberArgumentValidationUtils.isSameDictionary(sequenceDictionaries.get(i), sequenceDictionaries.get(i + 1))) {
+                logger.warn("Sequence dictionaries do not match across all inputs.");
+            }
+        });
     }
 }

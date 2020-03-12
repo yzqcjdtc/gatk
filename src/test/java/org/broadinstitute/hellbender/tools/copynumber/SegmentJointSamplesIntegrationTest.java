@@ -38,13 +38,13 @@ public final class SegmentJointSamplesIntegrationTest extends CommandLineProgram
     private static final File NORMAL_ALLELIC_COUNTS_FILE_WITH_MISSING_SITES = new File(TEST_SUB_DIR,
             "model-segments-wes-normal-allelic-counts-with-missing-sites.allelicCounts.tsv");
 
-//    private static final File TUMOR_DENOISED_COPY_RATIOS_FILE = new File("/home/slee/working/germline-tagging/REBC-AC9B/REBC-AC9B-TTP1-A-1-1-D-A525-36.denoisedCR.tsv");
-//    private static final File TUMOR_ALLELIC_COUNTS_FILE = new File("/home/slee/working/germline-tagging/REBC-AC9B/REBC-AC9B-TTP1-A-1-1-D-A525-36.allelicCounts.tsv");
-//    private static final File NORMAL_ALLELIC_COUNTS_FILE = new File("/home/slee/working/germline-tagging/REBC-AC9B/REBC-AC9B-NB1-A-1-0-D-A553-36.allelicCounts.tsv");
+    private static final File TUMOR_DENOISED_COPY_RATIOS_FILE = new File("/home/slee/working/germline-tagging/REBC-AC9B/REBC-AC9B-TTP1-A-1-1-D-A525-36.denoisedCR.tsv");
+    private static final File TUMOR_ALLELIC_COUNTS_FILE = new File("/home/slee/working/germline-tagging/REBC-AC9B/REBC-AC9B-TTP1-A-1-1-D-A525-36.allelicCounts.tsv");
+    private static final File NORMAL_ALLELIC_COUNTS_FILE = new File("/home/slee/working/germline-tagging/REBC-AC9B/REBC-AC9B-NB1-A-1-0-D-A553-36.allelicCounts.tsv");
 
-    private static final File TUMOR_DENOISED_COPY_RATIOS_FILE = new File("/home/slee/working/germline-tagging/REBC-AC9B/chr13.REBC-AC9B-TTP1-A-1-1-D-A525-36.denoisedCR.tsv");
-    private static final File TUMOR_ALLELIC_COUNTS_FILE = new File("/home/slee/working/germline-tagging/REBC-AC9B/chr13.REBC-AC9B-TTP1-A-1-1-D-A525-36.allelicCounts.tsv");
-    private static final File NORMAL_ALLELIC_COUNTS_FILE = new File("/home/slee/working/germline-tagging/REBC-AC9B/chr13.REBC-AC9B-NB1-A-1-0-D-A553-36.allelicCounts.tsv");
+//    private static final File TUMOR_DENOISED_COPY_RATIOS_FILE = new File("/home/slee/working/germline-tagging/REBC-AC9B/chr13.REBC-AC9B-TTP1-A-1-1-D-A525-36.denoisedCR.tsv");
+//    private static final File TUMOR_ALLELIC_COUNTS_FILE = new File("/home/slee/working/germline-tagging/REBC-AC9B/chr13.REBC-AC9B-TTP1-A-1-1-D-A525-36.allelicCounts.tsv");
+//    private static final File NORMAL_ALLELIC_COUNTS_FILE = new File("/home/slee/working/germline-tagging/REBC-AC9B/chr13.REBC-AC9B-NB1-A-1-0-D-A553-36.allelicCounts.tsv");
 
     private static final SampleLocatableMetadata EXPECTED_METADATA = new CopyRatioCollection(TUMOR_DENOISED_COPY_RATIOS_FILE).getMetadata();
 
@@ -54,10 +54,14 @@ public final class SegmentJointSamplesIntegrationTest extends CommandLineProgram
         final String outputPrefix = "test-all";
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .add(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
-                .add(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
                 .add(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
                 .add(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
                 .add(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
+                .add(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, TUMOR_DENOISED_COPY_RATIOS_FILE.getAbsolutePath())
                 .add(CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath())
                 .add(CopyNumberStandardArgument.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME, NORMAL_ALLELIC_COUNTS_FILE.getAbsolutePath())
                 .add(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO")
