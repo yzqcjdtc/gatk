@@ -42,6 +42,9 @@ public class LocalAssemblyMapper extends CommandLineProgram {
     @Argument(fullName = "ref-index", doc = "The MiniMap2 index for the reference")
     private String refIndex;
 
+    @Argument(fullName = "sv-discovery-mode", doc = "If true, only output contigs with supplemental alignments")
+    private boolean svDiscoveryMode = false;
+
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="Write output to this file")
@@ -82,42 +85,57 @@ public class LocalAssemblyMapper extends CommandLineProgram {
                                 }
                                 contigCalls.add(sb.toString());
                             }
-                            final MiniMap2Aligner aligner = new MiniMap2Aligner(mm2Index, MiniMap2Aligner.Preset.ASM20);
-                            final List<List<MiniMap2Alignment>> allAlignments =
-                                    aligner.alignSeqs(contigCalls, String::getBytes);
-                            final int nContigs = contigCalls.size();
-                            for ( int idx = 0; idx != nContigs; ++idx ) {
-                                final List<MiniMap2Alignment> alignments = allAlignments.get(idx);
-                                final int nAlignments = alignments.size();
-                                for ( int alignmentIdx = 0; alignmentIdx != nAlignments; ++alignmentIdx ) {
-                                    final MiniMap2Alignment alignment = alignments.get(alignmentIdx);
-                                    writer.write(eventName + idx);
-                                    writer.write('\t');
-                                    final int refId = alignment.getRefId();
 
-                                    final int samFlag =
-                                            (alignment.isRevStrand() ? SAMFlag.READ_REVERSE_STRAND.intValue() : 0) +
-                                            (alignmentIdx == 0 ? 0 : SAMFlag.SUPPLEMENTARY_ALIGNMENT.intValue()) +
-                                            (refId >= 0 ? 0 : SAMFlag.READ_UNMAPPED.intValue());
-                                    writer.write(Integer.toString(samFlag));
-                                    writer.write('\t');
-                                    writer.write(refId >= 0 ? refNames.get(refId) : "*");
-                                    writer.write('\t');
-                                    writer.write(Integer.toString(alignment.getRefStart() + 1));
-                                    writer.write('\t');
-                                    writer.write(Integer.toString(alignment.getMapQ()));
-                                    writer.write('\t');
-                                    writer.write(alignment.getCigar());
-                                    writer.write("\t*\t0\t0\t");
-                                    if ( alignmentIdx != 0 ) {
-                                        writer.write('*');
-                                    } else if ( alignment.isRevStrand() ) {
-                                        writer.write(SequenceUtil.reverseComplement(contigCalls.get(idx)));
-                                    } else {
-                                        writer.write(contigCalls.get(idx));
+                            try ( final MiniMap2Aligner aligner =
+                                          new MiniMap2Aligner(mm2Index, MiniMap2Aligner.Preset.ASM20) ) {
+                                final List<List<MiniMap2Alignment>> allAlignments =
+                                        aligner.alignSeqs(contigCalls, String::getBytes);
+                                final int nContigs = contigCalls.size();
+                                for ( int contigId = 0; contigId != nContigs; ++contigId ) {
+                                    final String contigName = eventName + contigId;
+                                    final List<MiniMap2Alignment> alignments = allAlignments.get(contigId);
+                                    final int nAlignments = alignments.size();
+                                    if ( svDiscoveryMode ) {
+                                        boolean foundSupplementalAlignment = false;
+                                        int supplementalBit = SAMFlag.SUPPLEMENTARY_ALIGNMENT.intValue();
+                                        for ( final MiniMap2Alignment alignment : alignments ) {
+                                            if ( (alignment.getSAMFlag() & supplementalBit) != 0 ) {
+                                                foundSupplementalAlignment = true;
+                                                break;
+                                            }
+                                        }
+                                        if ( !foundSupplementalAlignment ) {
+                                            continue;
+                                        }
                                     }
-                                    writer.write("\t*");
-                                    writer.newLine();
+                                    if ( nAlignments == 0 ) {
+                                        writer.write(contigName + "\t" + SAMFlag.READ_UNMAPPED.intValue() +
+                                                "\t*\t0\t255\t*\t*\t0\t0\t" + contigCalls.get(contigId) + "\t*\n");
+                                    }
+                                    for ( int alignmentIdx = 0; alignmentIdx != nAlignments; ++alignmentIdx ) {
+                                        final MiniMap2Alignment alignment = alignments.get(alignmentIdx);
+                                        if ( (alignment.getSAMFlag() & SAMFlag.SECONDARY_ALIGNMENT.intValue()) != 0 ) {
+                                            continue;
+                                        }
+
+                                        final boolean isRev =
+                                                (alignment.getSAMFlag() & SAMFlag.READ_REVERSE_STRAND.intValue()) != 0;
+                                        final String seq;
+                                        if ( alignmentIdx != 0 ) {
+                                            seq = "*";
+                                        } else if ( isRev ) {
+                                            seq = SequenceUtil.reverseComplement(contigCalls.get(contigId));
+                                        } else {
+                                            seq = contigCalls.get(contigId);
+                                        }
+                                        writer.write(contigName + "\t" +
+                                                alignment.getSAMFlag() + "\t" +
+                                                refNames.get(alignment.getRefId()) + "\t" +
+                                                (alignment.getRefStart() + 1) + "\t" +
+                                                alignment.getMapQ() + "\t" +
+                                                alignment.getCigar() + "\t*\t0\t0\t" +
+                                                seq + "\t*\tNM:i:" + alignment.getNM() + "\n");
+                                    }
                                 }
                             }
                         } catch ( final IOException ioe ) {
