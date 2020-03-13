@@ -16,6 +16,7 @@ RUN apt-get update && \
     samtools \
     openjdk-8-jdk \
     tabix \
+    build-essential \
     software-properties-common && \
     apt-get -y clean  && \
     apt-get -y autoclean  && \
