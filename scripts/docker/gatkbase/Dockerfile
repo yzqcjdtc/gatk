@@ -5,8 +5,8 @@ FROM ubuntu:16.04
 #### Basic image utilities
 RUN apt-get update && \
     apt-get upgrade -y && \
-    apt-get install -y python && \
-    apt-get install -y wget \
+    apt-get install -y --no-install-recommends python \
+    wget \
     curl \
     bc \
     unzip \
