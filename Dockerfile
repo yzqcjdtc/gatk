@@ -52,9 +52,9 @@ RUN conda env create -n gatk -f /gatk/gatkcondaenv.yml && \
     echo "source activate gatk" >> /gatk/gatkenv.rc && \
     echo "source /gatk/gatk-completion.sh" >> /gatk/gatkenv.rc && \
     conda clean -afy && \
-    find /opt/conda/ -follow -type f -name '*.a' -delete && \
-    find /opt/conda/ -follow -type f -name '*.pyc' -delete && \
-    find /opt/conda/ -follow -type f -name '*.js.map' -delete && \
+    find /opt/miniconda/ -follow -type f -name '*.a' -delete && \
+    find /opt/miniconda/ -follow -type f -name '*.pyc' -delete && \
+    find /opt/miniconda/ -follow -type f -name '*.js.map' -delete && \
     rm -rf /root/.cache/pip
 
 CMD ["bash", "--init-file", "/gatk/gatkenv.rc"]
