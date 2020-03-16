@@ -49,7 +49,8 @@ ENV CLASSPATH /gatk/gatk.jar:$CLASSPATH
 WORKDIR /gatk
 ENV PATH $CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH
 ENV PYTHONDONTWRITEBYTECODE=true
-RUN conda env create -n gatk -f /gatk/gatkcondaenv.yml && \
+RUN CFLAGS="-g0 -Wl,--strip-all" && \
+    conda env create -n gatk -f /gatk/gatkcondaenv.yml && \
     echo "source activate gatk" >> /gatk/gatkenv.rc && \
     echo "source /gatk/gatk-completion.sh" >> /gatk/gatkenv.rc && \
     conda clean -ay && \
